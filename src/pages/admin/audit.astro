@@ -1,0 +1,141 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import Icon from "@/components/Icon.astro";
+---
+
+<AdminLayout title="Audit Log" activeNav="audit">
+  <div class="content-list-page">
+    <div class="filter-bar">
+      <div class="search-input">
+        <Icon name="search" size={16} />
+        <input type="search" id="search" placeholder="Filter by action or actor…" autocomplete="off" />
+      </div>
+      <select class="select" id="action-filter">
+        <option value="">All actions</option>
+        <option value="admin.login">Admin login</option>
+        <option value="quran">Quran</option>
+        <option value="hadith">Hadith</option>
+        <option value="adhkar">Adhkar</option>
+        <option value="reminder">Reminder</option>
+        <option value="subscriber">Subscriber</option>
+      </select>
+    </div>
+
+    <div class="list" id="audit-list">
+      <div class="card shimmer-card" style="padding:1.5rem"><div class="shimmer" style="height:14px;width:60%;border-radius:4px"></div></div>
+    </div>
+
+    <div class="pagination" id="pagination" hidden>
+      <button class="btn btn-outline" id="load-more">Load more</button>
+    </div>
+  </div>
+</AdminLayout>
+
+<style>
+  .content-list-page { display: flex; flex-direction: column; gap: 0.875rem; }
+  .filter-bar { display: flex; flex-direction: column; gap: 0.5rem; }
+  .search-input {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0 0.875rem; background: var(--bg-elev);
+    border: 1.5px solid var(--border-strong); border-radius: var(--radius-md);
+    color: var(--fg-faint); min-height: 44px;
+  }
+  .search-input:focus-within { border-color: var(--primary); color: var(--primary-strong); }
+  .search-input input { flex: 1; border: none; outline: none; background: transparent; color: var(--fg); font-size: 0.95rem; }
+  .list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+  .audit-card {
+    padding: 0.875rem 1rem;
+    display: flex; align-items: flex-start; gap: 0.75rem;
+  }
+  .audit-card__avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--accent-soft); color: var(--accent-strong);
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 700; flex-shrink: 0;
+  }
+  .audit-card__body { flex: 1; min-width: 0; }
+  .audit-card__action { font-size: 0.85rem; font-weight: 600; }
+  .audit-card__meta { font-size: 0.75rem; color: var(--fg-muted); }
+  .audit-card__time { font-size: 0.7rem; color: var(--fg-faint); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+
+  .pagination { display: flex; justify-content: center; padding: 1rem 0 3rem; }
+  @media (min-width: 768px) {
+    .filter-bar { flex-direction: row; }
+    .filter-bar .select { width: 220px; }
+  }
+</style>
+
+<script>
+  function escapeHtml(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[c]));
+  }
+  function relTime(iso) {
+    if (!iso) return "—";
+    const d = new Date(iso); const now = new Date();
+    const diff = Math.floor((now.getTime() - d.getTime()) / 1000);
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+    return `${Math.floor(diff/86400)}d ago`;
+  }
+
+  const list = document.getElementById("audit-list");
+  const searchInput = document.getElementById("search");
+  const actionFilter = document.getElementById("action-filter");
+  const pagination = document.getElementById("pagination");
+  const loadMoreBtn = document.getElementById("load-more");
+
+  let cursor, currentSearch = "", currentAction = "";
+
+  async function load(reset = true) {
+    if (reset) {
+      cursor = undefined;
+      list.innerHTML = `<div class="card shimmer-card" style="padding:1.5rem"><div class="shimmer" style="height:14px;width:60%;border-radius:4px"></div></div>`;
+    }
+    const params = new URLSearchParams();
+    if (currentSearch) params.set("search", currentSearch);
+    if (currentAction) params.set("action", currentAction);
+    params.set("limit", "25");
+    if (cursor) params.set("after", cursor);
+    try {
+      // Reuse the lightbase client directly via a custom endpoint
+      const res = await fetch(`/api/admin/audit?${params}`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      const rows = data.data.map((a) => `
+        <div class="card audit-card">
+          <div class="audit-card__avatar">${escapeHtml((a.actor || "?").charAt(0).toUpperCase())}</div>
+          <div class="audit-card__body">
+            <div class="audit-card__action">${escapeHtml(a.action)}</div>
+            <div class="audit-card__meta">${escapeHtml(a.actor)}${a.target ? " · " + escapeHtml(a.target) : ""}${a.ip ? " · " + escapeHtml(a.ip) : ""}</div>
+          </div>
+          <div class="audit-card__time">${relTime(a.at)}</div>
+        </div>
+      `).join("");
+      if (reset) {
+        list.innerHTML = data.data.length === 0 ? `<div style="padding:2rem;text-align:center;color:var(--fg-faint)">No audit entries.</div>` : rows;
+      } else {
+        list.insertAdjacentHTML("beforeend", rows);
+      }
+      pagination.hidden = !data.hasMore;
+      if (data.data.length > 0) cursor = data.data[data.data.length - 1].id;
+    } catch (e) {
+      list.innerHTML = `<div class="card" style="padding:1.5rem;color:var(--danger)">${e.message}</div>`;
+    }
+  }
+
+  let timer;
+  searchInput?.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      currentSearch = searchInput.value.trim();
+      load(true);
+    }, 300);
+  });
+  actionFilter?.addEventListener("change", () => { currentAction = actionFilter.value; load(true); });
+  loadMoreBtn?.addEventListener("click", () => load(false));
+  load(true);
+</script>

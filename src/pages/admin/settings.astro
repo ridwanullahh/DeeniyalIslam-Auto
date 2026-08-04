@@ -1,0 +1,174 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import Icon from "@/components/Icon.astro";
+import { CONFIG, BRAND } from "@/config";
+---
+
+<AdminLayout title="Settings" activeNav="settings">
+  <section class="card panel">
+    <header class="panel__head">
+      <h2><Icon name="settings" size={18} /> Platform Settings</h2>
+    </header>
+    <div class="panel__body">
+      <div class="row"><span>App name</span><strong>{CONFIG.appName}</strong></div>
+      <div class="row"><span>App URL</span><strong>{CONFIG.appUrl}</strong></div>
+      <div class="row"><span>Environment</span><strong class:list={["chip", CONFIG.isProd ? "chip-primary" : "chip-accent"]}>{CONFIG.nodeEnv}</strong></div>
+      <div class="row"><span>Log level</span><strong>{CONFIG.logLevel}</strong></div>
+    </div>
+  </section>
+
+  <section class="card panel">
+    <header class="panel__head">
+      <h2><Icon name="shield" size={18} /> Admin Credentials</h2>
+    </header>
+    <div class="panel__body">
+      <p class="hint">
+        Admin credentials are read from the <code>ADMIN_CREDENTIALS</code> environment variable.
+        They are env-based, not stored in the database. Update the env var and restart to change admins.
+      </p>
+      <div class="admins-list">
+        {CONFIG.admins.map((admin) => (
+          <div class="admin-row">
+            <div class="admin-row__avatar">{admin.email.charAt(0).toUpperCase()}</div>
+            <div class="admin-row__info">
+              <div class="admin-row__email">{admin.email}</div>
+              <div class="admin-row__role">Administrator</div>
+            </div>
+            <span class="chip chip-primary">env-defined</span>
+          </div>
+        ))}
+        {CONFIG.admins.length === 0 && (
+          <div class="empty">No admins configured. Set <code>ADMIN_CREDENTIALS=email:password</code> in .env</div>
+        )}
+      </div>
+    </div>
+  </section>
+
+  <section class="card panel">
+    <header class="panel__head">
+      <h2><Icon name="database" size={18} /> Lightbase Database</h2>
+    </header>
+    <div class="panel__body">
+      <div class="row"><span>Base URL</span><strong>{CONFIG.lightbase.baseUrl}</strong></div>
+      <div class="row"><span>Project ID</span><strong>{CONFIG.lightbase.projectId}</strong></div>
+      <div class="row"><span>Tenant</span><strong>{CONFIG.lightbase.tenant}</strong></div>
+      <div class="row"><span>Bucket</span><strong>{CONFIG.lightbase.bucket}</strong></div>
+      <div class="row"><span>API Key</span><strong>••••••{CONFIG.lightbase.apiKey.slice(-8)}</strong></div>
+    </div>
+  </section>
+
+  <section class="card panel">
+    <header class="panel__head">
+      <h2><Icon name="send" size={18} /> Channels</h2>
+    </header>
+    <div class="panel__body">
+      <div class="row"><span>WhatsApp</span><strong class:list={["chip", CONFIG.whatsapp.enabled ? "chip-primary" : ""]}>{CONFIG.whatsapp.enabled ? "Enabled" : "Disabled"}</strong></div>
+      <div class="row"><span>Telegram</span><strong class:list={["chip", CONFIG.telegram.enabled ? "chip-primary" : ""]}>{CONFIG.telegram.enabled ? "Enabled" : "Disabled"}</strong></div>
+      <div class="row"><span>Discord</span><strong class:list={["chip", CONFIG.discord.enabled ? "chip-primary" : ""]}>{CONFIG.discord.enabled ? "Enabled" : "Disabled"}</strong></div>
+      <div class="row"><span>Messenger</span><strong class:list={["chip", CONFIG.messenger.enabled ? "chip-primary" : ""]}>{CONFIG.messenger.enabled ? "Enabled" : "Disabled"}</strong></div>
+      <p class="hint">Enable channels via env vars (WHATSAPP_ENABLED, TELEGRAM_BOT_TOKEN, etc.) then restart.</p>
+    </div>
+  </section>
+
+  <section class="card panel">
+    <header class="panel__head">
+      <h2><Icon name="clock" size={18} /> Scheduler</h2>
+    </header>
+    <div class="panel__body">
+      <div class="row"><span>Status</span><strong class:list={["chip", CONFIG.scheduler.enabled ? "chip-primary" : ""]}>{CONFIG.scheduler.enabled ? "Enabled" : "Disabled"}</strong></div>
+      <div class="row"><span>Poll interval</span><strong>{CONFIG.scheduler.pollIntervalSec}s</strong></div>
+    </div>
+  </section>
+
+  <section class="card panel">
+    <header class="panel__head">
+      <h2><Icon name="sparkles" size={18} /> Brand Palette</h2>
+    </header>
+    <div class="panel__body">
+      <div class="palette-grid">
+        <div class="palette-swatch" style="background: {BRAND.primary}">
+          <span class="palette-swatch__name">Primary Green</span>
+          <span class="palette-swatch__hex">{BRAND.primary}</span>
+        </div>
+        <div class="palette-swatch" style="background: {BRAND.accent}">
+          <span class="palette-swatch__name">Accent Gold</span>
+          <span class="palette-swatch__hex">{BRAND.accent}</span>
+        </div>
+        <div class="palette-swatch" style="background: {BRAND.dark}; color: #fff">
+          <span class="palette-swatch__name">Dark</span>
+          <span class="palette-swatch__hex">{BRAND.dark}</span>
+        </div>
+        <div class="palette-swatch" style="background: {BRAND.lightBg}">
+          <span class="palette-swatch__name">Light BG</span>
+          <span class="palette-swatch__hex">{BRAND.lightBg}</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .panel { padding: 1rem 1.125rem; margin-bottom: 0.875rem; }
+  .panel__head { margin-bottom: 0.75rem; padding-bottom: 0.625rem; border-bottom: 1px solid var(--border); }
+  .panel__head h2 {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    font-size: 1rem; font-weight: 700;
+  }
+  .panel__body { padding-top: 0.25rem; }
+
+  .row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.625rem 0; border-bottom: 1px solid var(--border);
+    font-size: 0.875rem;
+  }
+  .row:last-child { border-bottom: none; }
+  .row span { color: var(--fg-muted); }
+  .row strong { font-weight: 600; }
+
+  .hint {
+    color: var(--fg-muted); font-size: 0.8rem; line-height: 1.5;
+    margin-bottom: 0.875rem; padding: 0.625rem 0.75rem;
+    background: var(--bg-sunken); border-radius: var(--radius-md);
+  }
+  code {
+    background: var(--bg-sunken); padding: 0.125rem 0.375rem;
+    border-radius: 4px; font-family: var(--font-mono); font-size: 0.8em;
+  }
+
+  .admins-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .admin-row {
+    display: flex; align-items: center; gap: 0.625rem;
+    padding: 0.625rem; border: 1px solid var(--border);
+    border-radius: var(--radius-md); background: var(--bg-sunken);
+  }
+  .admin-row__avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--primary); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 700;
+  }
+  .admin-row__info { flex: 1; }
+  .admin-row__email { font-size: 0.85rem; font-weight: 600; }
+  .admin-row__role { font-size: 0.75rem; color: var(--fg-faint); }
+
+  .empty {
+    padding: 1rem; text-align: center; color: var(--fg-faint); font-size: 0.875rem;
+  }
+
+  .palette-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem;
+  }
+  .palette-swatch {
+    padding: 1.25rem 1rem; border-radius: var(--radius-md);
+    display: flex; flex-direction: column; gap: 0.25rem;
+    min-height: 80px; border: 1px solid var(--border);
+  }
+  .palette-swatch__name {
+    font-size: 0.75rem; font-weight: 600;
+    color: color-mix(in srgb, currentColor 70%, transparent);
+  }
+  .palette-swatch__hex {
+    font-size: 0.7rem; font-family: var(--font-mono); font-weight: 600;
+    color: color-mix(in srgb, currentColor 70%, transparent);
+  }
+</style>
