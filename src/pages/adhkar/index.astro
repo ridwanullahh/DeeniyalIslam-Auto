@@ -1,0 +1,211 @@
+---
+/**
+ * /adhkar — public Adhkar browser by category.
+ */
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import Icon from "@/components/Icon.astro";
+
+const CATEGORIES = [
+  { id: "morning", label: "Morning", icon: "sun", desc: "Recited after Fajr, before sunrise" },
+  { id: "evening", label: "Evening", icon: "moon", desc: "Recited after Asr, before Maghrib" },
+  { id: "sleep", label: "Sleep", icon: "bookmark", desc: "Before sleeping at night" },
+  { id: "after_prayer", label: "After Prayer", icon: "check", desc: "After every obligatory prayer" },
+  { id: "protection", label: "Protection", icon: "shield", desc: "For protection from harm" },
+  { id: "distress", label: "Distress", icon: "heart", desc: "In times of difficulty" },
+  { id: "tahleel", label: "Tahleel", icon: "sparkles", desc: "General dhikr & tahleel" },
+];
+---
+
+<BaseLayout title="Adhkar" activeNav="adhkar">
+  <div class="adhkar-page">
+    <header class="adhkar-head">
+      <h1>Daily Adhkar</h1>
+      <p>The Sunnah remembrances — morning, evening, sleep, after prayer.</p>
+    </header>
+
+    <div class="categories-grid">
+      {CATEGORIES.map((cat) => (
+        <button class="card category-card" data-category={cat.id}>
+          <div class="category-card__icon">
+            <Icon name={cat.icon} size={20} />
+          </div>
+          <div class="category-card__body">
+            <div class="category-card__title">{cat.label}</div>
+            <div class="category-card__desc">{cat.desc}</div>
+          </div>
+          <Icon name="chevron_right" size={16} />
+        </button>
+      ))}
+    </div>
+
+    <div id="adhkar-list" hidden>
+      <header class="list-head">
+        <button class="back-btn" id="back-to-cats">
+          <Icon name="arrow_left" size={16} />
+          All categories
+        </button>
+        <h2 id="cat-title"></h2>
+      </header>
+      <div class="list" id="list"></div>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .adhkar-page { display: flex; flex-direction: column; gap: 0.875rem; }
+  .adhkar-head { text-align: center; padding: 1.5rem 0 0.5rem; }
+  .adhkar-head h1 { font-size: 1.75rem; letter-spacing: -0.02em; margin-bottom: 0.375rem; }
+  .adhkar-head p { color: var(--fg-muted); font-size: 0.875rem; }
+
+  .categories-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .category-card {
+    padding: 1rem 1.125rem;
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    text-align: left;
+    cursor: pointer;
+    transition: border 0.15s, transform 0.15s;
+    color: inherit;
+    width: 100%;
+  }
+  .category-card:hover { border-color: var(--primary); }
+  .category-card:active { transform: scale(0.99); }
+  .category-card__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--success-soft);
+    color: var(--primary-strong);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .category-card__body { flex: 1; min-width: 0; }
+  .category-card__title { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.125rem; }
+  .category-card__desc { font-size: 0.75rem; color: var(--fg-muted); }
+  .category-card svg:last-child { color: var(--fg-faint); flex-shrink: 0; }
+
+  .list-head {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0.75rem;
+  }
+  .back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--fg-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .back-btn:hover { color: var(--primary-strong); }
+  .list-head h2 { font-size: 1.125rem; flex: 1; }
+
+  .list { display: flex; flex-direction: column; gap: 0.625rem; }
+  .dhikr-card {
+    padding: 1rem 1.125rem;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+  }
+  .dhikr-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.625rem;
+  }
+  .dhikr-card__count {
+    background: var(--accent);
+    color: var(--brand-dark);
+    font-weight: 700;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: 999px;
+  }
+  .dhikr-card__arabic {
+    font-family: var(--font-arabic);
+    font-size: 1.4rem;
+    line-height: 1.9;
+    color: var(--fg);
+    direction: rtl;
+    text-align: right;
+    margin-bottom: 0.625rem;
+  }
+  .dhikr-card__translit {
+    font-size: 0.85rem;
+    color: var(--fg-muted);
+    font-style: italic;
+    margin-bottom: 0.375rem;
+  }
+  .dhikr-card__translation {
+    font-size: 0.9rem;
+    color: var(--fg);
+    line-height: 1.6;
+    margin-bottom: 0.5rem;
+  }
+  .dhikr-card__source {
+    font-size: 0.75rem;
+    color: var(--fg-faint);
+    font-style: italic;
+  }
+</style>
+
+<script>
+  function escapeHtml(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[c]));
+  }
+  const grid = document.querySelector(".categories-grid");
+  const listView = document.getElementById("adhkar-list");
+  const listEl = document.getElementById("list");
+  const catTitle = document.getElementById("cat-title");
+  const backBtn = document.getElementById("back-to-cats");
+
+  document.querySelectorAll(".category-card").forEach((card) => {
+    card.addEventListener("click", async () => {
+      const cat = card.dataset.category;
+      const label = card.querySelector(".category-card__title")?.textContent || cat;
+      grid.hidden = true;
+      listView.hidden = false;
+      catTitle.textContent = label;
+      listEl.innerHTML = `<div class="card shimmer-card" style="padding:1.5rem"><div class="shimmer" style="height:14px;width:60%;border-radius:4px"></div></div>`;
+      try {
+        const res = await fetch(`/api/public/adhkar?category=${encodeURIComponent(cat)}&limit=100`);
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error);
+        if (data.data.length === 0) {
+          listEl.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--fg-faint)">No adhkar in this category yet.</div>`;
+          return;
+        }
+        listEl.innerHTML = data.data.map((d) => `
+          <article class="dhikr-card fade-in">
+            <div class="dhikr-card__head">
+              <span class="dhikr-card__count">×${escapeHtml(d.repeatCount)}</span>
+            </div>
+            <div class="dhikr-card__arabic" dir="rtl" lang="ar">${escapeHtml(d.arabic)}</div>
+            ${d.transliteration ? `<div class="dhikr-card__translit">${escapeHtml(d.transliteration)}</div>` : ""}
+            <div class="dhikr-card__translation">${escapeHtml(d.translation)}</div>
+            ${d.source ? `<div class="dhikr-card__source">— ${escapeHtml(d.source)}</div>` : ""}
+          </article>
+        `).join("");
+      } catch (e) {
+        listEl.innerHTML = `<div class="card" style="padding:1.5rem;color:var(--danger)">${e.message}</div>`;
+      }
+    });
+  });
+
+  backBtn?.addEventListener("click", () => {
+    grid.hidden = false;
+    listView.hidden = true;
+  });
+</script>

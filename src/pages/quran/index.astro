@@ -1,0 +1,209 @@
+---
+/**
+ * /quran — public Quran browser. Mobile-native list with search.
+ */
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import Icon from "@/components/Icon.astro";
+---
+
+<BaseLayout title="Qur'an" activeNav="quran">
+  <div class="browse-page">
+    <header class="browse-head">
+      <h1>The Noble Qur'an</h1>
+      <p>Browse verses with Arabic, transliteration, and Saheeh International translation.</p>
+    </header>
+
+    <div class="filter-bar">
+      <div class="search-input">
+        <Icon name="search" size={16} />
+        <input type="search" id="search" placeholder="Search verses…" autocomplete="off" />
+      </div>
+      <select class="select" id="surah-filter">
+        <option value="">All surahs</option>
+      </select>
+    </div>
+
+    <div class="list" id="verses-list">
+      <div class="card shimmer-card" style="padding:1.5rem">
+        <div class="shimmer" style="height:14px;width:60%;border-radius:4px"></div>
+      </div>
+    </div>
+
+    <div class="pagination" id="pagination" hidden>
+      <button class="btn btn-outline" id="load-more">Load more</button>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .browse-page { display: flex; flex-direction: column; gap: 0.875rem; }
+  .browse-head { text-align: center; padding: 1.5rem 0 0.5rem; }
+  .browse-head h1 {
+    font-size: 1.75rem;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.375rem;
+  }
+  .browse-head p {
+    color: var(--fg-muted);
+    font-size: 0.875rem;
+  }
+  .filter-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    position: sticky;
+    top: 56px;
+    z-index: 10;
+    padding: 0.5rem 0;
+    background: color-mix(in srgb, var(--bg) 90%, transparent);
+    backdrop-filter: blur(8px);
+  }
+  .search-input {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 0.875rem;
+    background: var(--bg-elev);
+    border: 1.5px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    color: var(--fg-faint);
+    min-height: 44px;
+  }
+  .search-input:focus-within {
+    border-color: var(--primary);
+    color: var(--primary-strong);
+  }
+  .search-input input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--fg);
+    font-size: 0.95rem;
+  }
+  .list { display: flex; flex-direction: column; gap: 0.625rem; }
+  .verse-card {
+    padding: 1rem 1.125rem;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    transition: border 0.15s;
+  }
+  .verse-card:hover { border-color: var(--primary); }
+  .verse-card__ref {
+    font-size: 0.75rem;
+    color: var(--primary-strong);
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .verse-card__arabic {
+    font-family: var(--font-arabic);
+    font-size: 1.4rem;
+    line-height: 1.9;
+    color: var(--fg);
+    direction: rtl;
+    text-align: right;
+    margin-bottom: 0.625rem;
+  }
+  .verse-card__translation {
+    font-size: 0.9rem;
+    color: var(--fg);
+    line-height: 1.6;
+    margin-bottom: 0.5rem;
+  }
+  .verse-card__source {
+    font-size: 0.75rem;
+    color: var(--fg-faint);
+    font-style: italic;
+  }
+  .empty-state {
+    padding: 3rem 1rem;
+    text-align: center;
+    color: var(--fg-faint);
+  }
+  .pagination { display: flex; justify-content: center; padding: 1rem 0 3rem; }
+  @media (min-width: 768px) {
+    .filter-bar { flex-direction: row; }
+    .filter-bar .select { width: 220px; }
+  }
+</style>
+
+<script>
+  function escapeHtml(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[c]));
+  }
+  const list = document.getElementById("verses-list");
+  const searchInput = document.getElementById("search");
+  const surahFilter = document.getElementById("surah-filter");
+  const pagination = document.getElementById("pagination");
+  const loadMoreBtn = document.getElementById("load-more");
+
+  let cursor, currentSearch = "", currentSurah = "";
+
+  async function load(reset = true) {
+    if (reset) {
+      cursor = undefined;
+      list.innerHTML = `<div class="card shimmer-card" style="padding:1.5rem"><div class="shimmer" style="height:14px;width:60%;border-radius:4px"></div></div>`;
+    }
+    const params = new URLSearchParams();
+    if (currentSearch) params.set("search", currentSearch);
+    if (currentSurah) params.set("surah", currentSurah);
+    params.set("limit", "20");
+    if (cursor) params.set("after", cursor);
+    try {
+      const res = await fetch(`/api/public/quran?${params}`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      const rows = data.data.map((v) => `
+        <article class="verse-card fade-in">
+          <div class="verse-card__ref">Surah ${escapeHtml(v.surahNameEn)} — ${v.surah}:${v.ayah}</div>
+          <div class="verse-card__arabic" dir="rtl" lang="ar">${escapeHtml(v.arabic)}</div>
+          ${v.transliteration ? `<div class="verse-card__translation" style="font-style:italic;color:var(--fg-muted);font-size:0.85rem">${escapeHtml(v.transliteration)}</div>` : ""}
+          <div class="verse-card__translation">${escapeHtml(v.translation)}</div>
+          <div class="verse-card__source">— ${escapeHtml(v.source ?? "Saheeh International")}</div>
+        </article>
+      `).join("");
+      if (reset) {
+        if (data.data.length === 0) {
+          list.innerHTML = `<div class="empty-state">No verses found.</div>`;
+        } else {
+          list.innerHTML = rows;
+        }
+      } else {
+        list.insertAdjacentHTML("beforeend", rows);
+      }
+      pagination.hidden = !data.hasMore;
+      if (data.data.length > 0) cursor = data.data[data.data.length - 1].id;
+    } catch (e) {
+      list.innerHTML = `<div class="card" style="padding:1.5rem;color:var(--danger)">${e.message}</div>`;
+    }
+  }
+
+  let timer;
+  searchInput?.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      currentSearch = searchInput.value.trim();
+      load(true);
+    }, 300);
+  });
+  surahFilter?.addEventListener("change", () => {
+    currentSurah = surahFilter.value;
+    load(true);
+  });
+  loadMoreBtn?.addEventListener("click", () => load(false));
+
+  const surahs = [
+    [1, "Al-Fatihah"], [2, "Al-Baqarah"], [3, "Aal-E-Imran"], [4, "An-Nisa"], [5, "Al-Maidah"],
+    [16, "An-Nahl"], [39, "Az-Zumar"], [103, "Al-Asr"], [105, "Al-Fil"], [106, "Quraysh"],
+    [107, "Al-Maun"], [108, "Al-Kawthar"], [112, "Al-Ikhlas"], [113, "Al-Falaq"], [114, "An-Nas"],
+  ];
+  surahFilter.innerHTML = "<option value=''>All surahs</option>" +
+    surahs.map(([n, name]) => `<option value="${n}">${n}. ${name}</option>`).join("");
+
+  load(true);
+</script>

@@ -1,0 +1,219 @@
+---
+/**
+ * /hadith — public Hadith browser.
+ */
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import Icon from "@/components/Icon.astro";
+
+const COLLECTIONS = [
+  { value: "", label: "All collections" },
+  { value: "bukhari", label: "Sahih al-Bukhari" },
+  { value: "muslim", label: "Sahih Muslim" },
+  { value: "tirmidhi", label: "Jami at-Tirmidhi" },
+  { value: "abudawud", label: "Sunan Abu Dawud" },
+];
+---
+
+<BaseLayout title="Hadith" activeNav="hadith">
+  <div class="browse-page">
+    <header class="browse-head">
+      <h1>Authentic Hadith</h1>
+      <p>Selected narrations from Bukhari, Muslim, Tirmidhi, Abu Dawud.</p>
+    </header>
+
+    <div class="filter-bar">
+      <div class="search-input">
+        <Icon name="search" size={16} />
+        <input type="search" id="search" placeholder="Search hadiths…" autocomplete="off" />
+      </div>
+      <select class="select" id="collection-filter">
+        {COLLECTIONS.map((c) => <option value={c.value}>{c.label}</option>)}
+      </select>
+    </div>
+
+    <div class="list" id="list">
+      <div class="card shimmer-card" style="padding:1.5rem">
+        <div class="shimmer" style="height:14px;width:60%;border-radius:4px"></div>
+      </div>
+    </div>
+
+    <div class="pagination" id="pagination" hidden>
+      <button class="btn btn-outline" id="load-more">Load more</button>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .browse-page { display: flex; flex-direction: column; gap: 0.875rem; }
+  .browse-head { text-align: center; padding: 1.5rem 0 0.5rem; }
+  .browse-head h1 { font-size: 1.75rem; letter-spacing: -0.02em; margin-bottom: 0.375rem; }
+  .browse-head p { color: var(--fg-muted); font-size: 0.875rem; }
+
+  .filter-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    position: sticky;
+    top: 56px;
+    z-index: 10;
+    padding: 0.5rem 0;
+    background: color-mix(in srgb, var(--bg) 90%, transparent);
+    backdrop-filter: blur(8px);
+  }
+  .search-input {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 0.875rem;
+    background: var(--bg-elev);
+    border: 1.5px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    color: var(--fg-faint);
+    min-height: 44px;
+  }
+  .search-input:focus-within {
+    border-color: var(--primary);
+    color: var(--primary-strong);
+  }
+  .search-input input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--fg);
+    font-size: 0.95rem;
+  }
+  .list { display: flex; flex-direction: column; gap: 0.625rem; }
+  .hadith-card {
+    padding: 1rem 1.125rem;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+  }
+  .hadith-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+  }
+  .hadith-card__ref {
+    font-size: 0.75rem;
+    color: var(--primary-strong);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .hadith-card__grade {
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    text-transform: uppercase;
+  }
+  .hadith-card__narrator {
+    font-size: 0.8rem;
+    color: var(--primary-strong);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+  .hadith-card__arabic {
+    font-family: var(--font-arabic);
+    font-size: 1.25rem;
+    line-height: 1.85;
+    color: var(--fg);
+    direction: rtl;
+    text-align: right;
+    margin-bottom: 0.5rem;
+  }
+  .hadith-card__translation {
+    font-size: 0.9rem;
+    color: var(--fg);
+    line-height: 1.6;
+    margin-bottom: 0.5rem;
+  }
+  .hadith-card__source {
+    font-size: 0.75rem;
+    color: var(--fg-faint);
+    font-style: italic;
+  }
+  .empty-state {
+    padding: 3rem 1rem;
+    text-align: center;
+    color: var(--fg-faint);
+  }
+  .pagination { display: flex; justify-content: center; padding: 1rem 0 3rem; }
+  @media (min-width: 768px) {
+    .filter-bar { flex-direction: row; }
+    .filter-bar .select { width: 220px; }
+  }
+</style>
+
+<script>
+  function escapeHtml(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[c]));
+  }
+  const list = document.getElementById("list");
+  const searchInput = document.getElementById("search");
+  const collFilter = document.getElementById("collection-filter");
+  const pagination = document.getElementById("pagination");
+  const loadMoreBtn = document.getElementById("load-more");
+
+  let cursor, currentSearch = "", currentColl = "";
+
+  async function load(reset = true) {
+    if (reset) {
+      cursor = undefined;
+      list.innerHTML = `<div class="card shimmer-card" style="padding:1.5rem"><div class="shimmer" style="height:14px;width:60%;border-radius:4px"></div></div>`;
+    }
+    const params = new URLSearchParams();
+    if (currentSearch) params.set("search", currentSearch);
+    if (currentColl) params.set("collection", currentColl);
+    params.set("limit", "20");
+    if (cursor) params.set("after", cursor);
+    try {
+      const res = await fetch(`/api/public/hadith?${params}`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      const rows = data.data.map((h) => `
+        <article class="hadith-card fade-in">
+          <div class="hadith-card__head">
+            <div class="hadith-card__ref">${escapeHtml(h.collection)} · #${escapeHtml(h.hadithNumber)}</div>
+            ${h.grade ? `<span class="hadith-card__grade">${escapeHtml(h.grade)}</span>` : ""}
+          </div>
+          ${h.narratorEn ? `<div class="hadith-card__narrator">Narrated by ${escapeHtml(h.narratorEn)}</div>` : ""}
+          <div class="hadith-card__arabic" dir="rtl" lang="ar">${escapeHtml(h.textAr ?? "")}</div>
+          <div class="hadith-card__translation">${escapeHtml(h.textEn)}</div>
+          ${h.source ? `<div class="hadith-card__source">— ${escapeHtml(h.source)}</div>` : ""}
+        </article>
+      `).join("");
+      if (reset) {
+        list.innerHTML = data.data.length === 0 ? `<div class="empty-state">No hadiths found.</div>` : rows;
+      } else {
+        list.insertAdjacentHTML("beforeend", rows);
+      }
+      pagination.hidden = !data.hasMore;
+      if (data.data.length > 0) cursor = data.data[data.data.length - 1].id;
+    } catch (e) {
+      list.innerHTML = `<div class="card" style="padding:1.5rem;color:var(--danger)">${e.message}</div>`;
+    }
+  }
+
+  let timer;
+  searchInput?.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      currentSearch = searchInput.value.trim();
+      load(true);
+    }, 300);
+  });
+  collFilter?.addEventListener("change", () => {
+    currentColl = collFilter.value;
+    load(true);
+  });
+  loadMoreBtn?.addEventListener("click", () => load(false));
+  load(true);
+</script>
