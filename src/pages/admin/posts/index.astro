@@ -1,0 +1,155 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import Icon from "@/components/Icon.astro";
+---
+
+<AdminLayout title="Autoposts" activeNav="posts">
+  <div class="content-list-page">
+    <div class="page-head">
+      <a href="/admin/posts/new" class="btn btn-primary page-head__cta">
+        <Icon name="plus" size={16} />
+        Compose post
+      </a>
+      <span class="chip chip-primary">
+        <Icon name="send" size={12} />
+        <span class="count-chip">…</span> posts
+      </span>
+    </div>
+
+    <div class="filter-bar">
+      <select class="select" id="status-filter">
+        <option value="">All statuses</option>
+        <option value="scheduled">Scheduled</option>
+        <option value="published">Published</option>
+        <option value="failed">Failed</option>
+        <option value="publishing">Publishing</option>
+      </select>
+      <select class="select" id="type-filter">
+        <option value="">All types</option>
+        <option value="quran_verse">Quran verse</option>
+        <option value="hadith">Hadith</option>
+        <option value="adhkar">Adhkar</option>
+        <option value="reminder">Reminder</option>
+      </select>
+    </div>
+
+    <div class="list" id="posts-list">
+      <div class="card shimmer-card" style="padding:1.5rem"><div class="shimmer" style="height:14px;width:60%;border-radius:4px"></div></div>
+    </div>
+
+    <div class="pagination" id="pagination" hidden>
+      <button class="btn btn-outline" id="load-more">Load more</button>
+    </div>
+  </div>
+</AdminLayout>
+
+<style>
+  .content-list-page { display: flex; flex-direction: column; gap: 0.875rem; }
+  .page-head { display: flex; align-items: center; justify-content: space-between; }
+  .filter-bar { display: flex; flex-direction: column; gap: 0.5rem; }
+  .list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+  .post-card {
+    padding: 0.875rem 1rem;
+    display: flex; align-items: flex-start; gap: 0.75rem;
+    transition: border 0.15s;
+  }
+  .post-card__type {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: var(--accent-soft); color: var(--accent-strong);
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  }
+  .post-card__body { flex: 1; min-width: 0; }
+  .post-card__caption { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .post-card__meta { font-size: 0.75rem; color: var(--fg-muted); margin-bottom: 0.375rem; }
+  .post-card__channels { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+  .post-card__channel {
+    font-size: 0.6rem; font-weight: 700; padding: 0.2rem 0.4rem; border-radius: 4px;
+    background: var(--bg-sunken); color: var(--fg-muted); text-transform: uppercase;
+  }
+  .post-card__status {
+    font-size: 0.65rem; font-weight: 700; padding: 0.25rem 0.5rem; border-radius: 999px;
+    text-transform: uppercase; flex-shrink: 0;
+  }
+  .post-card__status--scheduled { background: var(--warning-soft); color: var(--warning); }
+  .post-card__status--published { background: var(--success-soft); color: var(--primary-strong); }
+  .post-card__status--failed { background: var(--danger-soft); color: var(--danger); }
+  .post-card__status--publishing { background: var(--info-soft); color: var(--info); }
+
+  .pagination { display: flex; justify-content: center; padding: 1rem 0 3rem; }
+  @media (min-width: 768px) {
+    .filter-bar { flex-direction: row; }
+    .filter-bar .select { width: 200px; }
+  }
+</style>
+
+<script>
+  function escapeHtml(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[c]));
+  }
+  function relTime(iso) {
+    if (!iso) return "—";
+    const d = new Date(iso); const now = new Date();
+    const diff = d.getTime() - now.getTime();
+    if (diff < 0) return `${Math.abs(Math.round(diff / 60000))}m ago`;
+    if (diff < 3600000) return `in ${Math.round(diff / 60000)}m`;
+    if (diff < 86400000) return `in ${Math.round(diff / 3600000)}h`;
+    return `in ${Math.round(diff / 86400000)}d`;
+  }
+  const list = document.getElementById("posts-list");
+  const statusFilter = document.getElementById("status-filter");
+  const typeFilter = document.getElementById("type-filter");
+  const countChip = document.querySelector(".count-chip");
+  const pagination = document.getElementById("pagination");
+  const loadMoreBtn = document.getElementById("load-more");
+
+  let cursor, currentStatus = "", currentType = "";
+
+  async function load(reset = true) {
+    if (reset) {
+      cursor = undefined;
+      list.innerHTML = `<div class="card shimmer-card" style="padding:1.5rem"><div class="shimmer" style="height:14px;width:60%;border-radius:4px"></div></div>`;
+    }
+    const params = new URLSearchParams();
+    if (currentStatus) params.set("status", currentStatus);
+    if (currentType) params.set("contentType", currentType);
+    params.set("limit", "25");
+    if (cursor) params.set("after", cursor);
+    try {
+      const res = await fetch(`/api/admin/posts?${params}`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      if (countChip) countChip.textContent = String(data.count);
+      const rows = data.data.map((p) => `
+        <div class="card post-card">
+          <div class="post-card__type">${escapeHtml(p.contentType.split("_")[0])}</div>
+          <div class="post-card__body">
+            <div class="post-card__caption">${escapeHtml(p.caption || "(no caption)")}</div>
+            <div class="post-card__meta">${p.scheduledFor ? `Scheduled ${relTime(p.scheduledFor)}` : ""} · ${p.publishedAt ? `Published ${relTime(p.publishedAt)}` : ""}</div>
+            <div class="post-card__channels">
+              ${(p.channelTargets || []).map((c) => `<span class="post-card__channel">${escapeHtml(c.replace(/_/g, " "))}</span>`).join("")}
+            </div>
+            ${p.error ? `<div style="margin-top:0.375rem;font-size:0.7rem;color:var(--danger)">${escapeHtml(p.error.slice(0, 100))}</div>` : ""}
+          </div>
+          <span class="post-card__status post-card__status--${escapeHtml(p.status)}">${escapeHtml(p.status)}</span>
+        </div>
+      `).join("");
+      if (reset) {
+        list.innerHTML = data.data.length === 0 ? `<div style="padding:2rem;text-align:center;color:var(--fg-faint)">No posts yet. <a href="/admin/posts/new" style="color:var(--primary-strong);font-weight:600">Compose one</a></div>` : rows;
+      } else {
+        list.insertAdjacentHTML("beforeend", rows);
+      }
+      pagination.hidden = !data.hasMore;
+      if (data.data.length > 0) cursor = data.data[data.data.length - 1].id;
+    } catch (e) {
+      list.innerHTML = `<div class="card" style="padding:1.5rem;color:var(--danger)">${e.message}</div>`;
+    }
+  }
+  statusFilter?.addEventListener("change", () => { currentStatus = statusFilter.value; load(true); });
+  typeFilter?.addEventListener("change", () => { currentType = typeFilter.value; load(true); });
+  loadMoreBtn?.addEventListener("click", () => load(false));
+  load(true);
+</script>

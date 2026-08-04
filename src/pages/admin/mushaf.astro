@@ -1,0 +1,178 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import Icon from "@/components/Icon.astro";
+import { isCloudinaryEnabled, getConfigSnapshot } from "@/lib/cloudinary";
+
+const cdSnapshot = getConfigSnapshot();
+---
+
+<AdminLayout title="Mushaf Library" activeNav="content">
+  <div class="mushaf-page">
+    <header class="mushaf-head">
+      <h1>Mushaf Library</h1>
+      <p>Real Mushaf Madinah pages — {cdSnapshot.enabled ? "stored on Cloudinary" : "stored on Lightbase"}</p>
+    </header>
+
+    <section class="card upload-panel">
+      <div class="upload-panel__head">
+        <h2><Icon name="plus" size={18} /> Upload a page</h2>
+      </div>
+      <form id="upload-form" enctype="multipart/form-data">
+        <div class="form-row form-row--2">
+          <label class="field">
+            <span class="field__label">Page number (1-604)</span>
+            <input type="number" name="pageNumber" min="1" max="604" required class="input" placeholder="1" />
+          </label>
+          <label class="field">
+            <span class="field__label">Juz (optional)</span>
+            <input type="number" name="juz" min="1" max="30" class="input" placeholder="1" />
+          </label>
+        </div>
+        <label class="field">
+          <span class="field__label">Image file (PNG/JPG/WebP)</span>
+          <input type="file" name="file" accept="image/png,image/jpeg,image/webp" required class="input" />
+        </label>
+        <div id="upload-error" class="form-error" hidden></div>
+        <button type="submit" class="btn btn-primary" id="upload-btn">
+          <Icon name="plus" size={16} />
+          Upload page
+        </button>
+      </form>
+    </section>
+
+    <section class="pages-section">
+      <div class="pages-head">
+        <h2>Uploaded pages</h2>
+        <span class="chip chip-primary">
+          <Icon name="book" size={12} />
+          <span class="count-chip">…</span> pages
+        </span>
+      </div>
+      <div class="pages-grid" id="pages-grid">
+        <div class="card shimmer-card" style="padding:1.5rem"><div class="shimmer" style="height:14px;width:60%;border-radius:4px"></div></div>
+      </div>
+      <div class="pagination" id="pagination" hidden>
+        <button class="btn btn-outline" id="load-more">Load more</button>
+      </div>
+    </section>
+  </div>
+</AdminLayout>
+
+<style>
+  .mushaf-page { display: flex; flex-direction: column; gap: 0.875rem; }
+  .mushaf-head { text-align: center; padding: 1rem 0 0.5rem; }
+  .mushaf-head h1 { font-size: 1.75rem; letter-spacing: -0.02em; margin-bottom: 0.375rem; }
+  .mushaf-head p { color: var(--fg-muted); font-size: 0.875rem; }
+
+  .upload-panel { padding: 1rem 1.125rem; }
+  .upload-panel__head { margin-bottom: 0.875rem; padding-bottom: 0.625rem; border-bottom: 1px solid var(--border); }
+  .upload-panel__head h2 { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 1rem; font-weight: 700; }
+  form { display: flex; flex-direction: column; gap: 0.875rem; }
+  .field { display: flex; flex-direction: column; gap: 0.375rem; }
+  .field__label { font-size: 0.8rem; font-weight: 600; color: var(--fg-muted); }
+  .form-row { display: flex; flex-direction: column; gap: 0.875rem; }
+  .form-error {
+    background: var(--danger-soft); color: var(--danger); padding: 0.75rem 1rem;
+    border-radius: var(--radius-md); font-size: 0.875rem;
+    border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+  }
+
+  .pages-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.875rem; }
+  .pages-head h2 { font-size: 1rem; font-weight: 700; }
+  .pages-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.625rem;
+  }
+  .page-card {
+    background: var(--bg-elev); border: 1px solid var(--border);
+    border-radius: var(--radius-md); overflow: hidden;
+  }
+  .page-card__img {
+    width: 100%; aspect-ratio: 3/4; object-fit: cover; background: var(--bg-sunken);
+    display: block;
+  }
+  .page-card__meta { padding: 0.5rem 0.75rem; }
+  .page-card__num { font-size: 0.85rem; font-weight: 700; }
+  .page-card__sub { font-size: 0.7rem; color: var(--fg-muted); }
+  .pagination { display: flex; justify-content: center; padding: 1rem 0 3rem; }
+
+  @media (min-width: 768px) {
+    .form-row--2 { flex-direction: row; }
+    .form-row--2 > * { flex: 1; }
+    .pages-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+</style>
+
+<script>
+  function escapeHtml(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[c]));
+  }
+  const grid = document.getElementById("pages-grid");
+  const countChip = document.querySelector(".count-chip");
+  const pagination = document.getElementById("pagination");
+  const loadMoreBtn = document.getElementById("load-more");
+  const uploadForm = document.getElementById("upload-form");
+  const uploadError = document.getElementById("upload-error");
+  const uploadBtn = document.getElementById("upload-btn");
+
+  let cursor;
+
+  async function load(reset = true) {
+    if (reset) {
+      cursor = undefined;
+      grid.innerHTML = `<div class="card shimmer-card" style="padding:1.5rem"><div class="shimmer" style="height:14px;width:60%;border-radius:4px"></div></div>`;
+    }
+    const params = new URLSearchParams();
+    params.set("limit", "24");
+    if (cursor) params.set("after", cursor);
+    try {
+      const res = await fetch(`/api/admin/mushaf?${params}`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      if (countChip) countChip.textContent = String(data.count);
+      const rows = data.data.map((p) => `
+        <div class="page-card">
+          <img src="${escapeHtml(p.imageUrl)}" alt="Page ${escapeHtml(p.pageNumber)}" class="page-card__img" loading="lazy" />
+          <div class="page-card__meta">
+            <div class="page-card__num">Page ${escapeHtml(p.pageNumber)}</div>
+            <div class="page-card__sub">Juz ${escapeHtml(p.juz ?? "—")}</div>
+          </div>
+        </div>
+      `).join("");
+      if (reset) {
+        grid.innerHTML = data.data.length === 0 ? `<div style="grid-column:1/-1;padding:2rem;text-align:center;color:var(--fg-faint)">No pages uploaded yet.</div>` : rows;
+      } else {
+        grid.insertAdjacentHTML("beforeend", rows);
+      }
+      pagination.hidden = !data.hasMore;
+      if (data.data.length > 0) cursor = data.data[data.data.length - 1].id;
+    } catch (e) {
+      grid.innerHTML = `<div class="card" style="grid-column:1/-1;padding:1.5rem;color:var(--danger)">${e.message}</div>`;
+    }
+  }
+
+  uploadForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (uploadError) uploadError.hidden = true;
+    if (uploadBtn) uploadBtn.disabled = true;
+    const fd = new FormData(uploadForm);
+    try {
+      const res = await fetch("/api/admin/mushaf", {
+        method: "POST",
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || `Failed: ${res.status}`);
+      uploadForm.reset();
+      load(true);
+    } catch (err) {
+      if (uploadError) { uploadError.textContent = err.message; uploadError.hidden = false; }
+    } finally {
+      if (uploadBtn) uploadBtn.disabled = false;
+    }
+  });
+
+  loadMoreBtn?.addEventListener("click", () => load(false));
+  load(true);
+</script>

@@ -1,0 +1,176 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import Icon from "@/components/Icon.astro";
+---
+
+<AdminLayout title="Khatma Plans" activeNav="subscribers">
+  <div class="content-list-page">
+    <div class="page-head">
+      <a href="/admin/khatma/new" class="btn btn-primary page-head__cta">
+        <Icon name="plus" size={16} />
+        New khatma
+      </a>
+      <span class="chip chip-primary">
+        <Icon name="book" size={12} />
+        <span class="count-chip">…</span> plans
+      </span>
+    </div>
+
+    <div class="filter-bar">
+      <div class="search-input">
+        <Icon name="search" size={16} />
+        <input type="search" id="search" placeholder="Search by subscriber or name…" autocomplete="off" />
+      </div>
+      <select class="select" id="status-filter">
+        <option value="">All statuses</option>
+        <option value="active">Active</option>
+        <option value="paused">Paused</option>
+        <option value="completed">Completed</option>
+        <option value="abandoned">Abandoned</option>
+      </select>
+    </div>
+
+    <div class="list" id="khatma-list">
+      <div class="card shimmer-card" style="padding:1.5rem"><div class="shimmer" style="height:14px;width:60%;border-radius:4px"></div></div>
+    </div>
+
+    <div class="pagination" id="pagination" hidden>
+      <button class="btn btn-outline" id="load-more">Load more</button>
+    </div>
+  </div>
+</AdminLayout>
+
+<style>
+  .content-list-page { display: flex; flex-direction: column; gap: 0.875rem; }
+  .page-head { display: flex; align-items: center; justify-content: space-between; }
+  .filter-bar { display: flex; flex-direction: column; gap: 0.5rem; }
+  .search-input {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0 0.875rem; background: var(--bg-elev);
+    border: 1.5px solid var(--border-strong); border-radius: var(--radius-md);
+    color: var(--fg-faint); min-height: 44px;
+  }
+  .search-input:focus-within { border-color: var(--primary); color: var(--primary-strong); }
+  .search-input input { flex: 1; border: none; outline: none; background: transparent; color: var(--fg); font-size: 0.95rem; }
+  .list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+  .khatma-card {
+    padding: 0.875rem 1rem;
+    cursor: pointer;
+    transition: border 0.15s;
+  }
+  .khatma-card:hover { border-color: var(--primary); }
+  .khatma-card__head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 0.5rem;
+  }
+  .khatma-card__title { font-size: 0.95rem; font-weight: 600; }
+  .khatma-card__pace { font-size: 0.75rem; color: var(--fg-muted); text-transform: capitalize; }
+  .khatma-card__status {
+    font-size: 0.65rem; font-weight: 700; padding: 0.25rem 0.5rem; border-radius: 999px;
+    text-transform: uppercase;
+  }
+  .khatma-card__status--active { background: var(--success-soft); color: var(--primary-strong); }
+  .khatma-card__status--paused { background: var(--warning-soft); color: var(--warning); }
+  .khatma-card__status--completed { background: var(--info-soft); color: var(--info); }
+  .khatma-card__status--abandoned { background: var(--bg-sunken); color: var(--fg-faint); }
+
+  .progress-bar {
+    height: 6px; background: var(--bg-sunken); border-radius: 3px; overflow: hidden;
+    margin: 0.5rem 0;
+  }
+  .progress-bar__fill {
+    height: 100%; background: linear-gradient(90deg, var(--primary), var(--primary-strong));
+    transition: width 0.3s;
+  }
+  .khatma-card__meta {
+    display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--fg-muted);
+  }
+
+  .pagination { display: flex; justify-content: center; padding: 1rem 0 3rem; }
+  @media (min-width: 768px) {
+    .filter-bar { flex-direction: row; }
+    .filter-bar .select { width: 200px; }
+  }
+</style>
+
+<script>
+  function escapeHtml(s) {
+    return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[c]));
+  }
+  const list = document.getElementById("khatma-list");
+  const searchInput = document.getElementById("search");
+  const statusFilter = document.getElementById("status-filter");
+  const countChip = document.querySelector(".count-chip");
+  const pagination = document.getElementById("pagination");
+  const loadMoreBtn = document.getElementById("load-more");
+
+  let cursor, currentSearch = "", currentStatus = "";
+
+  async function load(reset = true) {
+    if (reset) {
+      cursor = undefined;
+      list.innerHTML = `<div class="card shimmer-card" style="padding:1.5rem"><div class="shimmer" style="height:14px;width:60%;border-radius:4px"></div></div>`;
+    }
+    const params = new URLSearchParams();
+    if (currentStatus) params.set("status", currentStatus);
+    params.set("limit", "25");
+    if (cursor) params.set("after", cursor);
+    try {
+      const res = await fetch(`/api/admin/khatma?${params}`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      if (countChip) countChip.textContent = String(data.count);
+
+      // Filter by search client-side (since search hits subscriber handle which we don't have here)
+      let filtered = data.data;
+      if (currentSearch) {
+        filtered = filtered.filter((k) => (k.name || "").toLowerCase().includes(currentSearch.toLowerCase()) || k.subscriberId.includes(currentSearch));
+      }
+
+      const rows = filtered.map((k) => {
+        const progressPct = k.endPage > k.startPage ? Math.round(((k.currentPage - k.startPage) / (k.endPage - k.startPage)) * 100) : 0;
+        return `
+          <div class="card khatma-card" data-id="${k.id}">
+            <div class="khatma-card__head">
+              <div>
+                <div class="khatma-card__title">${escapeHtml(k.name || "Qur'an Khatma")}</div>
+                <div class="khatma-card__pace">${escapeHtml(k.pace.replace(/_/g, " "))} · ${k.pagesPerStep} pages/step</div>
+              </div>
+              <span class="khatma-card__status khatma-card__status--${escapeHtml(k.status)}">${escapeHtml(k.status)}</span>
+            </div>
+            <div class="progress-bar"><div class="progress-bar__fill" style="width: ${Math.max(0, Math.min(100, progressPct))}%"></div></div>
+            <div class="khatma-card__meta">
+              <span>Page ${k.currentPage} / ${k.endPage} (${progressPct}%)</span>
+              <span>${k.deliveredCount || 0} delivered</span>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      if (reset) {
+        list.innerHTML = filtered.length === 0 ? `<div style="padding:2rem;text-align:center;color:var(--fg-faint)">No khatma plans yet. <a href="/admin/khatma/new" style="color:var(--primary-strong);font-weight:600">Create one</a></div>` : rows;
+      } else {
+        list.insertAdjacentHTML("beforeend", rows);
+      }
+      pagination.hidden = !data.hasMore;
+      if (data.data.length > 0) cursor = data.data[data.data.length - 1].id;
+    } catch (e) {
+      list.innerHTML = `<div class="card" style="padding:1.5rem;color:var(--danger)">${e.message}</div>`;
+    }
+  }
+
+  let timer;
+  searchInput?.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      currentSearch = searchInput.value.trim();
+      load(true);
+    }, 300);
+  });
+  statusFilter?.addEventListener("change", () => { currentStatus = statusFilter.value; load(true); });
+  loadMoreBtn?.addEventListener("click", () => load(false));
+  load(true);
+</script>

@@ -1,0 +1,352 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import Icon from "@/components/Icon.astro";
+---
+
+<BaseLayout title="Qur'an Khatma" activeNav="subscribe">
+  <div class="khatma-page">
+    <header class="khatma-head">
+      <div class="khatma-head__icon">
+        <Icon name="book" size={28} />
+      </div>
+      <h1>Qur'an Khatma</h1>
+      <p>Read the entire Qur'an at your own pace — pages delivered to your inbox on a schedule that fits your day.</p>
+    </header>
+
+    <form id="khatma-form" class="form">
+      <fieldset class="card step">
+        <legend class="step__num">1</legend>
+        <div class="step__body">
+          <h2 class="step__title">Your WhatsApp number</h2>
+          <p class="step__desc">We'll deliver your daily reading here.</p>
+          <label class="field">
+            <span class="field__label">WhatsApp number (E.164)</span>
+            <input type="tel" name="handle" required class="input" placeholder="+234 803 123 4567" />
+            <span class="field__hint">Include country code.</span>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset class="card step">
+        <legend class="step__num">2</legend>
+        <div class="step__body">
+          <h2 class="step__title">Choose your pace</h2>
+          <p class="step__desc">How fast do you want to complete the Qur'an?</p>
+          <div class="pace-options">
+            <label class="pace-option">
+              <input type="radio" name="pace" value="pages_per_salah" checked />
+              <div class="pace-option__inner">
+                <div class="pace-option__title">1 page × 5 salahs/day</div>
+                <div class="pace-option__desc">Finish in ~4 months (recommended)</div>
+              </div>
+            </label>
+            <label class="pace-option">
+              <input type="radio" name="pace" value="pages_per_day" data-pages="1" />
+              <div class="pace-option__inner">
+                <div class="pace-option__title">1 page/day</div>
+                <div class="pace-option__desc">Finish in ~20 months</div>
+              </div>
+            </label>
+            <label class="pace-option">
+              <input type="radio" name="pace" value="pages_per_day" data-pages="2" />
+              <div class="pace-option__inner">
+                <div class="pace-option__title">2 pages/day</div>
+                <div class="pace-option__desc">Finish in ~10 months</div>
+              </div>
+            </label>
+            <label class="pace-option">
+              <input type="radio" name="pace" value="pages_per_day" data-pages="5" />
+              <div class="pace-option__inner">
+                <div class="pace-option__title">5 pages/day</div>
+                <div class="pace-option__desc">Finish in ~4 months</div>
+              </div>
+            </label>
+            <label class="pace-option">
+              <input type="radio" name="pace" value="juz_per_week" />
+              <div class="pace-option__inner">
+                <div class="pace-option__title">1 juz/week (20 pages)</div>
+                <div class="pace-option__desc">Finish in ~7 months</div>
+              </div>
+            </label>
+            <label class="pace-option">
+              <input type="radio" name="pace" value="complete_in_days" data-target="30" />
+              <div class="pace-option__inner">
+                <div class="pace-option__title">Ramadan pace — 30 days</div>
+                <div class="pace-option__desc">20 pages/day (intensive)</div>
+              </div>
+            </label>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="card step">
+        <legend class="step__num">3</legend>
+        <div class="step__body">
+          <h2 class="step__title">Your location</h2>
+          <p class="step__desc">For salah-anchored schedules, we need your city to compute prayer times.</p>
+          <label class="field">
+            <span class="field__label">City, Country</span>
+            <input type="text" name="location" required class="input" placeholder="Lagos, Nigeria" />
+            <span class="field__hint">We use the free Aladhan API — no signup required.</span>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset class="card step">
+        <legend class="step__num">4</legend>
+        <div class="step__body">
+          <h2 class="step__title">Delivery time</h2>
+          <p class="step__desc">When should each reading arrive?</p>
+          <div class="schedule-options">
+            <label class="schedule-option">
+              <input type="radio" name="schedule" value="after_fajr" checked />
+              <div class="schedule-option__inner">
+                <Icon name="sun" size={18} />
+                <span>After Fajr</span>
+              </div>
+            </label>
+            <label class="schedule-option">
+              <input type="radio" name="schedule" value="every_salah" />
+              <div class="schedule-option__inner">
+                <Icon name="clock" size={18} />
+                <span>After every salah</span>
+              </div>
+            </label>
+            <label class="schedule-option">
+              <input type="radio" name="schedule" value="morning_7" />
+              <div class="schedule-option__inner">
+                <Icon name="sun" size={18} />
+                <span>7am every day</span>
+              </div>
+            </label>
+            <label class="schedule-option">
+              <input type="radio" name="schedule" value="evening_8" />
+              <div class="schedule-option__inner">
+                <Icon name="moon" size={18} />
+                <span>8pm every day</span>
+              </div>
+            </label>
+          </div>
+        </div>
+      </fieldset>
+
+      <div id="form-error" class="form-error" hidden></div>
+
+      <button type="submit" class="btn btn-primary submit-btn" id="submit-btn">
+        <Icon name="check" size={18} />
+        Start my Khatma
+      </button>
+    </form>
+
+    <div id="success-screen" class="card success-screen" hidden>
+      <div class="success-screen__icon">
+        <Icon name="check" size={32} />
+      </div>
+      <h2>Bismillah — Khatma started!</h2>
+      <p id="success-msg">Your first reading will arrive at the scheduled time, in shaa Allah. Reply 'khatma status' on WhatsApp anytime to see your progress.</p>
+      <a href="/" class="btn btn-outline">
+        <Icon name="home" size={16} />
+        Back to home
+      </a>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .khatma-page { max-width: 640px; margin: 0 auto; padding: 1rem 0 3rem; }
+  .khatma-head { text-align: center; margin-bottom: 1.5rem; }
+  .khatma-head__icon {
+    width: 64px; height: 64px; border-radius: 18px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-strong));
+    color: #fff; display: inline-flex; align-items: center; justify-content: center;
+    margin-bottom: 0.875rem;
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--primary) 30%, transparent);
+  }
+  .khatma-head h1 { font-size: 1.5rem; margin-bottom: 0.375rem; letter-spacing: -0.02em; }
+  .khatma-head p { color: var(--fg-muted); font-size: 0.9rem; }
+
+  .form { display: flex; flex-direction: column; gap: 0.875rem; }
+  .step { border: none; padding: 0; margin: 0; position: relative; padding-left: 2.75rem; }
+  .step__num {
+    position: absolute; top: 1rem; left: 1rem;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--primary); color: #fff;
+    font-size: 0.85rem; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 0; margin: 0;
+  }
+  .step__body { padding: 1rem 1.125rem 1.125rem; }
+  .step__title { font-size: 1rem; margin-bottom: 0.25rem; }
+  .step__desc { font-size: 0.8rem; color: var(--fg-muted); margin-bottom: 0.875rem; }
+
+  .field { display: flex; flex-direction: column; gap: 0.375rem; }
+  .field__label { font-size: 0.8rem; font-weight: 600; color: var(--fg-muted); }
+  .field__hint { font-size: 0.7rem; color: var(--fg-faint); }
+
+  .pace-options { display: flex; flex-direction: column; gap: 0.5rem; }
+  .pace-option { cursor: pointer; }
+  .pace-option input { position: absolute; opacity: 0; pointer-events: none; }
+  .pace-option__inner {
+    padding: 0.75rem 0.875rem;
+    border: 1.5px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    color: var(--fg-muted);
+    transition: border 0.15s, color 0.15s, background 0.15s;
+  }
+  .pace-option input:checked + .pace-option__inner {
+    border-color: var(--primary); color: var(--primary-strong); background: var(--success-soft);
+  }
+  .pace-option__title { font-size: 0.9rem; font-weight: 600; }
+  .pace-option__desc { font-size: 0.75rem; color: var(--fg-faint); }
+
+  .schedule-options {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem;
+  }
+  .schedule-option { cursor: pointer; }
+  .schedule-option input { position: absolute; opacity: 0; pointer-events: none; }
+  .schedule-option__inner {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.75rem 0.875rem;
+    border: 1.5px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    color: var(--fg-muted);
+    transition: border 0.15s, color 0.15s, background 0.15s;
+    font-size: 0.85rem; font-weight: 600;
+  }
+  .schedule-option input:checked + .schedule-option__inner {
+    border-color: var(--primary); color: var(--primary-strong); background: var(--success-soft);
+  }
+
+  .form-error {
+    background: var(--danger-soft); color: var(--danger); padding: 0.75rem 1rem;
+    border-radius: var(--radius-md); font-size: 0.875rem;
+    border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+  }
+
+  .submit-btn { width: 100%; height: 52px; font-size: 1rem; }
+
+  .success-screen { padding: 2rem 1.25rem; text-align: center; margin-top: 1rem; }
+  .success-screen__icon {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: var(--primary); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-bottom: 1rem;
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--primary) 35%, transparent);
+    animation: pop 0.4s var(--ease-spring);
+  }
+  @keyframes pop { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+  .success-screen h2 { font-size: 1.25rem; margin-bottom: 0.5rem; }
+  .success-screen p { color: var(--fg-muted); font-size: 0.9rem; margin-bottom: 1.25rem; line-height: 1.55; }
+</style>
+
+<script>
+  const form = document.getElementById("khatma-form");
+  const errorBox = document.getElementById("form-error");
+  const submitBtn = document.getElementById("submit-btn");
+  const successScreen = document.getElementById("success-screen");
+
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (errorBox) errorBox.hidden = true;
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="animation: spin 0.8s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Setting up…`;
+    }
+    const fd = new FormData(form);
+    const handle = (fd.get("handle") as string)?.trim();
+    const location = (fd.get("location") as string)?.trim();
+    const paceRadio = document.querySelector('input[name="pace"]:checked') as HTMLInputElement;
+    const schedule = (fd.get("schedule") as string);
+
+    if (!handle || !location) {
+      if (errorBox) { errorBox.textContent = "Please fill in your WhatsApp number and location."; errorBox.hidden = false; }
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg> Start my Khatma`;
+      }
+      return;
+    }
+
+    // Build the request body
+    // We send to /api/subscribers (creates subscriber + sets location),
+    // then to /api/khatma (creates khatma).
+    const [city, country] = location.split(",").map(s => s.trim());
+    if (!city || !country) {
+      if (errorBox) { errorBox.textContent = "Please send 'City, Country' (e.g. 'Lagos, Nigeria')."; errorBox.hidden = false; }
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg> Start my Khatma`; }
+      return;
+    }
+
+    try {
+      // 1. Create/update subscriber with location
+      const subRes = await fetch("/api/subscribers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          platform: "whatsapp",
+          handle,
+          timezone: "Africa/Lagos", // Will be auto-corrected by Aladhan lookup
+          language: "en",
+          subscriptions: [],
+          meta: { city, country, source: "website_khatma" },
+        }),
+      });
+      const subData = await subRes.json();
+      if (!subRes.ok || !subData.ok) throw new Error(subData.error || "Failed to set up subscriber");
+
+      // 2. Set the location properly via /api/subscribers location-aware endpoint
+      const locRes = await fetch("/api/subscribers/location", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platform: "whatsapp", handle, city, country }),
+      });
+      const locData = await locRes.json();
+      const subscriberId = locData.subscriberId || subData.subscriber.id;
+
+      // 3. Create the khatma
+      const pace = paceRadio.value;
+      const pagesAttr = paceRadio.dataset.pages;
+      const targetAttr = paceRadio.dataset.target;
+      const khatmaBody: any = {
+        subscriberId,
+        pace,
+        scheduleType: schedule === "every_salah" ? "salah_relative" : (schedule === "after_fajr" ? "salah_relative" : "cron"),
+      };
+      if (pace === "pages_per_day" && pagesAttr) khatmaBody.pagesPerStep = Number(pagesAttr);
+      if (pace === "complete_in_days" && targetAttr) khatmaBody.targetDays = Number(targetAttr);
+      if (schedule === "after_fajr") { khatmaBody.salahKey = "fajr"; khatmaBody.salahOffsetMinutes = 10; }
+      if (schedule === "morning_7") khatmaBody.scheduleCron = "0 7 * * *";
+      if (schedule === "evening_8") khatmaBody.scheduleCron = "0 20 * * *";
+      khatmaBody.channel = "whatsapp";
+
+      const khatmaRes = await fetch("/api/khatma", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(khatmaBody),
+      });
+      const khatmaData = await khatmaRes.json();
+      if (!khatmaRes.ok || !khatmaData.ok) throw new Error(khatmaData.error || "Failed to create khatma");
+
+      form.hidden = true;
+      if (successScreen) {
+        successScreen.hidden = false;
+        const k = khatmaData.khatma;
+        const msgEl = document.getElementById("success-msg");
+        if (msgEl) {
+          msgEl.innerHTML = `Bismillah! Your khatma is set up:<br><br>
+            <strong>Pace:</strong> ${k.pace.replace(/_/g, " ")}<br>
+            <strong>Pages per step:</strong> ${k.pagesPerStep}<br>
+            ${k.targetEndAt ? `<strong>Target end:</strong> ${new Date(k.targetEndAt).toLocaleDateString()}<br>` : ""}
+            <br>Your first reading will arrive at the scheduled time, in shaa Allah.`;
+        }
+      }
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (err) {
+      if (errorBox) { errorBox.textContent = err.message; errorBox.hidden = false; }
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg> Start my Khatma`;
+      }
+    }
+  });
+</script>

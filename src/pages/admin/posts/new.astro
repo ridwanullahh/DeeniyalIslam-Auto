@@ -1,0 +1,236 @@
+---
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import Icon from "@/components/Icon.astro";
+---
+
+<AdminLayout title="Compose Post" activeNav="posts">
+  <div class="form-page">
+    <a href="/admin/posts" class="back-link">
+      <Icon name="arrow_left" size={14} />
+      Back to posts
+    </a>
+
+    <form id="post-form" class="form card">
+      <label class="field">
+        <span class="field__label">Content type</span>
+        <select name="contentType" required class="select" id="type-select">
+          <option value="">Select a type…</option>
+          <option value="quran_verse">Quran verse</option>
+          <option value="hadith">Hadith</option>
+          <option value="adhkar">Adhkar</option>
+          <option value="reminder">Reminder</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span class="field__label">Pick a specific item</span>
+        <select name="refId" required class="select" id="content-select" disabled>
+          <option value="">— Select content type first —</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span class="field__label">Caption (optional)</span>
+        <textarea name="caption" rows="3" class="textarea" placeholder="Add a custom caption or leave blank to use the content as-is…"></textarea>
+      </label>
+
+      <fieldset class="check-group">
+        <legend class="field__label">Publish to (pick one or more)</legend>
+        <label class="check-row">
+          <input type="checkbox" name="targets" value="whatsapp_status" />
+          <div>
+            <div class="check-row__title">WhatsApp Status</div>
+            <div class="check-row__desc">Posts to the bot's 24-hour status story</div>
+          </div>
+        </label>
+        <label class="check-row">
+          <input type="checkbox" name="targets" value="telegram" />
+          <div>
+            <div class="check-row__title">Telegram channel</div>
+            <div class="check-row__desc">Broadcasts to @deeniyalislam (or custom)</div>
+          </div>
+        </label>
+        <label class="check-row">
+          <input type="checkbox" name="targets" value="discord" />
+          <div>
+            <div class="check-row__title">Discord webhook</div>
+            <div class="check-row__desc">Posts via the configured Discord webhook</div>
+          </div>
+        </label>
+        <label class="check-row">
+          <input type="checkbox" name="targets" value="messenger" />
+          <div>
+            <div class="check-row__title">Facebook Page</div>
+            <div class="check-row__desc">Posts to the configured Facebook Page</div>
+          </div>
+        </label>
+        <label class="check-row">
+          <input type="checkbox" name="targets" value="site_home" />
+          <div>
+            <div class="check-row__title">Site home</div>
+            <div class="check-row__desc">Renders as the featured daily content</div>
+          </div>
+        </label>
+      </fieldset>
+
+      <label class="field">
+        <span class="field__label">Schedule for</span>
+        <input type="datetime-local" name="scheduledFor" required class="input" id="schedule-input" />
+        <div class="quick-times">
+          <button type="button" data-mins="5" class="quick-time">+5min</button>
+          <button type="button" data-mins="30" class="quick-time">+30min</button>
+          <button type="button" data-mins="60" class="quick-time">+1h</button>
+          <button type="button" data-mins="180" class="quick-time">+3h</button>
+          <button type="button" data-mins="1440" class="quick-time">+24h</button>
+        </div>
+      </label>
+
+      <div id="form-error" class="form-error" hidden></div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" id="submit-btn">
+          <Icon name="send" size={16} />
+          Schedule post
+        </button>
+      </div>
+    </form>
+  </div>
+</AdminLayout>
+
+<style>
+  .form-page { max-width: 760px; margin: 0 auto; }
+  .back-link {
+    display: inline-flex; align-items: center; gap: 0.25rem;
+    color: var(--fg-muted); font-size: 0.875rem; text-decoration: none; margin-bottom: 0.875rem;
+  }
+  .back-link:hover { color: var(--primary-strong); }
+  .form { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.875rem; }
+  .field { display: flex; flex-direction: column; gap: 0.375rem; }
+  .field__label { font-size: 0.8rem; font-weight: 600; color: var(--fg-muted); }
+
+  .check-group {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 0.875rem 1rem;
+    display: flex; flex-direction: column; gap: 0.5rem;
+  }
+  .check-group legend { padding: 0 0.5rem; }
+  .check-row {
+    display: flex; align-items: flex-start; gap: 0.625rem;
+    padding: 0.5rem; border-radius: var(--radius-sm);
+    cursor: pointer; transition: background 0.15s;
+  }
+  .check-row:hover { background: var(--bg-sunken); }
+  .check-row input { margin-top: 0.125rem; }
+  .check-row__title { font-size: 0.9rem; font-weight: 600; }
+  .check-row__desc { font-size: 0.75rem; color: var(--fg-muted); }
+
+  .quick-times {
+    display: flex; gap: 0.375rem; margin-top: 0.375rem; flex-wrap: wrap;
+  }
+  .quick-time {
+    padding: 0.25rem 0.625rem; border-radius: 999px;
+    background: var(--bg-sunken); color: var(--fg-muted);
+    font-size: 0.75rem; font-weight: 600; border: 1px solid var(--border);
+  }
+  .quick-time:hover {
+    background: var(--success-soft); color: var(--primary-strong);
+    border-color: var(--primary);
+  }
+
+  .form-error {
+    background: var(--danger-soft); color: var(--danger); padding: 0.75rem 1rem;
+    border-radius: var(--radius-md); font-size: 0.875rem;
+    border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+  }
+  .form-actions { display: flex; justify-content: flex-end; padding-top: 0.5rem; border-top: 1px solid var(--border); }
+</style>
+
+<script>
+  const typeSelect = document.getElementById("type-select");
+  const contentSelect = document.getElementById("content-select");
+  const scheduleInput = document.getElementById("schedule-input");
+  const form = document.getElementById("post-form");
+  const errorBox = document.getElementById("form-error");
+  const submitBtn = document.getElementById("submit-btn");
+
+  // Quick-time buttons
+  document.querySelectorAll(".quick-time").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const mins = Number(btn.dataset.mins);
+      const now = new Date(Date.now() + mins * 60_000);
+      // Format as datetime-local string
+      const tzOffset = now.getTimezoneOffset() * 60000;
+      const local = new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
+      scheduleInput.value = local;
+    });
+  });
+
+  // Load content items when type is selected
+  typeSelect.addEventListener("change", async () => {
+    const type = typeSelect.value;
+    if (!type) {
+      contentSelect.disabled = true;
+      contentSelect.innerHTML = "<option value=''>— Select content type first —</option>";
+      return;
+    }
+    contentSelect.disabled = true;
+    contentSelect.innerHTML = "<option value=''>Loading…</option>";
+    try {
+      const res = await fetch(`/api/admin/${type === "quran_verse" ? "quran" : type === "adhkar" ? "adhkar" : type === "reminder" ? "reminders" : "hadith"}?limit=100`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+      contentSelect.innerHTML = "<option value=''>— Pick one —</option>" + data.data.map((item) => {
+        let label = "";
+        if (type === "quran_verse") label = `${item.surah}:${item.ayah} — ${item.surahNameEn}`;
+        else if (type === "hadith") label = `${item.collection} #${item.hadithNumber}`;
+        else if (type === "adhkar") label = `${item.category} — ${item.translation?.slice(0, 40)}…`;
+        else if (type === "reminder") label = item.title;
+        return `<option value="${item.id}">${label}</option>`;
+      }).join("");
+      contentSelect.disabled = false;
+    } catch (e) {
+      contentSelect.innerHTML = `<option value=''>Failed to load: ${e.message}</option>`;
+    }
+  });
+
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (errorBox) errorBox.hidden = true;
+    if (submitBtn) submitBtn.disabled = true;
+    const fd = new FormData(form);
+    const targets = fd.getAll("targets");
+    if (targets.length === 0) {
+      if (errorBox) { errorBox.textContent = "Please pick at least one target channel"; errorBox.hidden = false; }
+      if (submitBtn) submitBtn.disabled = false;
+      return;
+    }
+    // Convert datetime-local to ISO
+    const schedLocal = fd.get("scheduledFor");
+    const schedIso = schedLocal ? new Date(schedLocal as string).toISOString() : null;
+    if (!schedIso) {
+      if (errorBox) { errorBox.textContent = "Please pick a schedule time"; errorBox.hidden = false; }
+      if (submitBtn) submitBtn.disabled = false;
+      return;
+    }
+    try {
+      const res = await fetch("/api/admin/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contentType: fd.get("contentType"),
+          refId: fd.get("refId"),
+          caption: fd.get("caption") || undefined,
+          channelTargets: targets,
+          scheduledFor: schedIso,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || `Failed: ${res.status}`);
+      window.location.href = "/admin/posts";
+    } catch (err) {
+      if (errorBox) { errorBox.textContent = err.message; errorBox.hidden = false; }
+      if (submitBtn) submitBtn.disabled = false;
+    }
+  });
+</script>
