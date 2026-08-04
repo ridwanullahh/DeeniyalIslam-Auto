@@ -1,0 +1,578 @@
+---
+/**
+ * AdminLayout.astro — auth-guarded shell for ALL /admin/* pages (except /admin/login).
+ *
+ * Mobile-native: bottom tab bar (Home, Content, Subs, Posts, Settings)
+ * Desktop: collapsible left sidebar + topbar
+ * Auth: redirects to /admin/login if no valid session
+ */
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import ThemeToggle from "@/components/ThemeToggle.astro";
+import Icon from "@/components/Icon.astro";
+// Auth is enforced by src/middleware.ts — by the time we reach here, the
+// request has a valid admin session and ctx.locals.adminEmail is set.
+const adminEmail = Astro.locals.adminEmail ?? "admin";
+
+interface Props {
+  title?: string;
+  activeNav?: "home" | "content" | "subscribers" | "posts" | "settings" | "audit";
+  bare?: boolean;
+}
+const { title = "Admin", activeNav = "home", bare = false } = Astro.props;
+
+const navItems = [
+  { id: "home", label: "Home", href: "/admin", icon: "home" },
+  { id: "content", label: "Content", href: "/admin/quran", icon: "book" },
+  { id: "subscribers", label: "Subs", href: "/admin/subscribers", icon: "users" },
+  { id: "posts", label: "Posts", href: "/admin/posts", icon: "send" },
+  { id: "settings", label: "Settings", href: "/admin/settings", icon: "settings" },
+];
+---
+
+<BaseLayout title={title} bare bodyClass="admin-shell" activeNav={activeNav}>
+  <div class="admin-layout">
+    <!-- Desktop sidebar -->
+    <aside class="sidebar desktop-only">
+      <a href="/admin" class="sidebar__brand">
+        <span class="sidebar__logo" aria-hidden="true">
+          <Icon name="mosque" size={20} />
+        </span>
+        <span class="sidebar__brand-text">
+          <span class="sidebar__brand-name">DeeniyalIslam</span>
+          <span class="sidebar__brand-sub">Auto · Admin</span>
+        </span>
+      </a>
+
+      <nav class="sidebar__nav">
+        {navItems.map((item) => (
+          <a
+            href={item.href}
+            class:list={["sidebar__link", activeNav === item.id && "is-active"]}
+          >
+            <Icon name={item.icon} size={18} />
+            <span>{item.label}</span>
+          </a>
+        ))}
+        <a href="/admin/audit" class:list={["sidebar__link", activeNav === "audit" && "is-active"]}>
+          <Icon name="shield" size={18} />
+          <span>Audit</span>
+        </a>
+      </nav>
+
+      <div class="sidebar__footer">
+        <div class="sidebar__admin">
+          <div class="sidebar__admin-avatar" aria-hidden="true">
+            {adminEmail.charAt(0).toUpperCase()}
+          </div>
+          <div class="sidebar__admin-info">
+            <div class="sidebar__admin-email">{adminEmail}</div>
+            <div class="sidebar__admin-role">Administrator</div>
+          </div>
+        </div>
+        <button id="sidebar-logout" class="sidebar__logout">
+          <Icon name="logout" size={16} />
+          Sign out
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main column -->
+    <div class="admin-main">
+      <header class="admin-topbar safe-top">
+        <div class="admin-topbar__left">
+          <button class="admin-topbar__menu mobile-only" aria-label="Open menu" id="open-drawer">
+            <Icon name="menu" size={20} />
+          </button>
+          <h1 class="admin-topbar__title">{title}</h1>
+        </div>
+        <div class="admin-topbar__right">
+          <a href="/" class="admin-topbar__view" title="View public site">
+            <Icon name="globe" size={16} />
+            <span class="desktop-only">View site</span>
+          </a>
+          <ThemeToggle />
+        </div>
+      </header>
+
+      <main class="admin-content" id="admin-content">
+        <slot />
+      </main>
+
+      <!-- Mobile bottom nav -->
+      <nav class="bottom-nav safe-bottom mobile-only">
+        {navItems.map((item) => (
+          <a
+            href={item.href}
+            class:list={["bottom-nav__item", activeNav === item.id && "is-active"]}
+            aria-label={item.label}
+          >
+            <Icon name={item.icon} size={20} />
+            <span class="bottom-nav__label">{item.label}</span>
+          </a>
+        ))}
+      </nav>
+    </div>
+
+    <!-- Mobile drawer (overlay) -->
+    <div class="drawer-backdrop mobile-only" id="drawer-backdrop" hidden></div>
+    <aside class="drawer mobile-only" id="drawer" aria-hidden="true">
+      <div class="drawer__head">
+        <span class="drawer__logo" aria-hidden="true"><Icon name="mosque" size={20} /></span>
+        <span class="drawer__brand">DeeniyalIslam · Admin</span>
+        <button class="drawer__close" id="close-drawer" aria-label="Close menu">
+          <Icon name="close" size={20} />
+        </button>
+      </div>
+      <nav class="drawer__nav">
+        {navItems.map((item) => (
+          <a
+            href={item.href}
+            class:list={["drawer__link", activeNav === item.id && "is-active"]}
+          >
+            <Icon name={item.icon} size={18} />
+            <span>{item.label}</span>
+          </a>
+        ))}
+        <a href="/admin/audit" class:list={["drawer__link", activeNav === "audit" && "is-active"]}>
+          <Icon name="shield" size={18} />
+          <span>Audit</span>
+        </a>
+      </nav>
+      <div class="drawer__foot">
+        <div class="drawer__admin">
+          <div class="drawer__admin-avatar" aria-hidden="true">
+            {adminEmail.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <div class="drawer__admin-email">{adminEmail}</div>
+            <div class="drawer__admin-role">Administrator</div>
+          </div>
+        </div>
+        <button id="drawer-logout" class="drawer__logout">
+          <Icon name="logout" size={16} />
+          Sign out
+        </button>
+      </div>
+    </aside>
+  </div>
+</BaseLayout>
+
+<script>
+  // Logout handler
+  async function doLogout() {
+    await fetch("/api/admin/logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Origin": window.location.origin },
+    });
+    window.location.href = "/admin/login";
+  }
+  document.getElementById("sidebar-logout")?.addEventListener("click", doLogout);
+  document.getElementById("drawer-logout")?.addEventListener("click", doLogout);
+
+  // Mobile drawer
+  const drawer = document.getElementById("drawer");
+  const backdrop = document.getElementById("drawer-backdrop");
+  function openDrawer() {
+    drawer?.classList.add("is-open");
+    drawer?.setAttribute("aria-hidden", "false");
+    if (backdrop) backdrop.hidden = false;
+    document.body.style.overflow = "hidden";
+  }
+  function closeDrawer() {
+    drawer?.classList.remove("is-open");
+    drawer?.setAttribute("aria-hidden", "true");
+    if (backdrop) backdrop.hidden = true;
+    document.body.style.overflow = "";
+  }
+  document.getElementById("open-drawer")?.addEventListener("click", openDrawer);
+  document.getElementById("close-drawer")?.addEventListener("click", closeDrawer);
+  backdrop?.addEventListener("click", closeDrawer);
+</script>
+
+<style>
+  .admin-shell {
+    background: var(--bg);
+  }
+  .admin-layout {
+    display: flex;
+    min-height: 100dvh;
+  }
+
+  /* ---- Sidebar (desktop only) ---- */
+  .sidebar {
+    width: 260px;
+    background: var(--bg-elev);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 1.25rem 1rem;
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    flex-shrink: 0;
+  }
+  .sidebar__brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--fg);
+    text-decoration: none;
+    padding: 0.5rem 0.625rem;
+    margin-bottom: 1.5rem;
+  }
+  .sidebar__logo {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-strong) 100%);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 35%, transparent);
+  }
+  .sidebar__brand-text {
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar__brand-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    line-height: 1.2;
+  }
+  .sidebar__brand-sub {
+    font-size: 0.75rem;
+    color: var(--fg-faint);
+  }
+
+  .sidebar__nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+  }
+  .sidebar__link {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.75rem 0.875rem;
+    border-radius: var(--radius-md);
+    color: var(--fg-muted);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: background 0.15s, color 0.15s;
+  }
+  .sidebar__link:hover {
+    background: var(--bg-sunken);
+    color: var(--fg);
+    text-decoration: none;
+  }
+  .sidebar__link.is-active {
+    background: var(--success-soft);
+    color: var(--primary-strong);
+  }
+
+  .sidebar__footer {
+    border-top: 1px solid var(--border);
+    padding-top: 0.875rem;
+    margin-top: 1rem;
+  }
+  .sidebar__admin {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0.25rem 0.75rem;
+  }
+  .sidebar__admin-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+  .sidebar__admin-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .sidebar__admin-email {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--fg);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .sidebar__admin-role {
+    font-size: 0.75rem;
+    color: var(--fg-faint);
+  }
+  .sidebar__logout {
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem;
+    border-radius: var(--radius-md);
+    color: var(--fg-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: background 0.15s, color 0.15s;
+  }
+  .sidebar__logout:hover {
+    background: var(--danger-soft);
+    color: var(--danger);
+  }
+
+  /* ---- Main column ---- */
+  .admin-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 80px; /* room for bottom nav on mobile */
+  }
+
+  .admin-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: color-mix(in srgb, var(--bg-elev) 88%, transparent);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .admin-topbar__left {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-width: 0;
+  }
+  .admin-topbar__menu {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--fg);
+    border: 1px solid var(--border);
+    background: var(--bg-elev);
+  }
+  .admin-topbar__title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .admin-topbar__right {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .admin-topbar__view {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.875rem;
+    border-radius: var(--radius-md);
+    color: var(--fg-muted);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    background: var(--bg-elev);
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .admin-topbar__view:hover {
+    color: var(--primary-strong);
+    border-color: var(--primary);
+    text-decoration: none;
+  }
+
+  .admin-content {
+    flex: 1;
+    padding: 1rem;
+    max-width: 1280px;
+    width: 100%;
+  }
+  @media (min-width: 768px) {
+    .admin-content {
+      padding: 1.5rem 1.75rem 3rem;
+    }
+  }
+
+  /* ---- Mobile bottom nav ---- */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    background: color-mix(in srgb, var(--bg-elev) 95%, transparent);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-around;
+    padding: 0.5rem 0.25rem calc(0.5rem + env(safe-area-inset-bottom, 0px));
+  }
+  .bottom-nav__item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.125rem;
+    padding: 0.375rem 0.25rem;
+    color: var(--fg-faint);
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+    transition: color 0.15s;
+  }
+  .bottom-nav__item.is-active {
+    color: var(--primary-strong);
+  }
+  .bottom-nav__label {
+    font-size: 0.65rem;
+    font-weight: 600;
+  }
+
+  /* ---- Mobile drawer ---- */
+  .drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    background: var(--backdrop);
+    z-index: 40;
+    animation: fadeIn 0.2s ease-out;
+  }
+  .drawer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    background: var(--bg-elev);
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 0.25s var(--ease-spring);
+    display: flex;
+    flex-direction: column;
+    padding: 1.25rem 1rem;
+  }
+  .drawer.is-open {
+    transform: translateX(0);
+  }
+  .drawer__head {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .drawer__logo {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-strong));
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .drawer__brand {
+    flex: 1;
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+  .drawer__close {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    color: var(--fg-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .drawer__nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+  }
+  .drawer__link {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.75rem 0.875rem;
+    border-radius: var(--radius-md);
+    color: var(--fg-muted);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.95rem;
+  }
+  .drawer__link.is-active {
+    background: var(--success-soft);
+    color: var(--primary-strong);
+  }
+  .drawer__foot {
+    border-top: 1px solid var(--border);
+    padding-top: 0.875rem;
+  }
+  .drawer__admin {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0.25rem 0.75rem;
+  }
+  .drawer__admin-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+  }
+  .drawer__admin-email {
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .drawer__admin-role {
+    font-size: 0.75rem;
+    color: var(--fg-faint);
+  }
+  .drawer__logout {
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem;
+    border-radius: var(--radius-md);
+    color: var(--fg-muted);
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+  .drawer__logout:hover {
+    background: var(--danger-soft);
+    color: var(--danger);
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+</style>

@@ -1,0 +1,474 @@
+---
+/**
+ * /admin — Dashboard home. Stats cards + recent activity + upcoming schedules.
+ */
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import Icon from "@/components/Icon.astro";
+---
+
+<AdminLayout title="Dashboard" activeNav="home">
+  <section class="stats-grid" id="stats-grid">
+    <!-- Skeletons rendered server-side; replaced by client-side fetch -->
+    <div class="stat-card card shimmer-card">
+      <div class="stat-card__icon shimmer" style="width:40px;height:40px;border-radius:12px"></div>
+      <div class="stat-card__body">
+        <div class="shimmer" style="height:10px;width:60px;border-radius:4px;margin-bottom:6px"></div>
+        <div class="shimmer" style="height:24px;width:80px;border-radius:6px"></div>
+      </div>
+    </div>
+    <div class="stat-card card shimmer-card">
+      <div class="stat-card__icon shimmer" style="width:40px;height:40px;border-radius:12px"></div>
+      <div class="stat-card__body">
+        <div class="shimmer" style="height:10px;width:60px;border-radius:4px;margin-bottom:6px"></div>
+        <div class="shimmer" style="height:24px;width:80px;border-radius:6px"></div>
+      </div>
+    </div>
+    <div class="stat-card card shimmer-card">
+      <div class="stat-card__icon shimmer" style="width:40px;height:40px;border-radius:12px"></div>
+      <div class="stat-card__body">
+        <div class="shimmer" style="height:10px;width:60px;border-radius:4px;margin-bottom:6px"></div>
+        <div class="shimmer" style="height:24px;width:80px;border-radius:6px"></div>
+      </div>
+    </div>
+    <div class="stat-card card shimmer-card">
+      <div class="stat-card__icon shimmer" style="width:40px;height:40px;border-radius:12px"></div>
+      <div class="stat-card__body">
+        <div class="shimmer" style="height:10px;width:60px;border-radius:4px;margin-bottom:6px"></div>
+        <div class="shimmer" style="height:24px;width:80px;border-radius:6px"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="bismillah-strip fade-in" style="animation-delay:0.1s">
+    <span class="bismillah-strip__arabic" dir="rtl" lang="ar">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</span>
+    <span class="bismillah-strip__en">In the name of Allah, the Most Merciful, the Especially Merciful.</span>
+  </section>
+
+  <section class="dash-cols">
+    <div class="card dash-panel">
+      <div class="dash-panel__head">
+        <h2 class="dash-panel__title">
+          <Icon name="clock" size={16} />
+          Upcoming schedules
+        </h2>
+        <a href="/admin/posts" class="dash-panel__link">View all</a>
+      </div>
+      <div class="dash-panel__body" id="schedules-list">
+        <div class="dash-empty">Loading…</div>
+      </div>
+    </div>
+
+    <div class="card dash-panel">
+      <div class="dash-panel__head">
+        <h2 class="dash-panel__title">
+          <Icon name="shield" size={16} />
+          Recent activity
+        </h2>
+        <a href="/admin/audit" class="dash-panel__link">View audit log</a>
+      </div>
+      <div class="dash-panel__body" id="audit-list">
+        <div class="dash-empty">Loading…</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card content-overview">
+    <div class="dash-panel__head">
+      <h2 class="dash-panel__title">
+        <Icon name="database" size={16} />
+        Content overview
+      </h2>
+      <a href="/admin/quran" class="dash-panel__link">Manage content</a>
+    </div>
+    <div class="content-grid" id="content-grid">
+      <div class="content-tile">
+        <Icon name="book" size={20} />
+        <div class="content-tile__info">
+          <div class="content-tile__label">Quran verses</div>
+          <div class="content-tile__count" id="count-quran">—</div>
+        </div>
+      </div>
+      <div class="content-tile">
+        <Icon name="users" size={20} />
+        <div class="content-tile__info">
+          <div class="content-tile__label">Hadiths</div>
+          <div class="content-tile__count" id="count-hadith">—</div>
+        </div>
+      </div>
+      <div class="content-tile">
+        <Icon name="bell" size={20} />
+        <div class="content-tile__info">
+          <div class="content-tile__label">Adhkar</div>
+          <div class="content-tile__count" id="count-adhkar">—</div>
+        </div>
+      </div>
+      <div class="content-tile">
+        <Icon name="sparkles" size={20} />
+        <div class="content-tile__info">
+          <div class="content-tile__label">Reminders</div>
+          <div class="content-tile__count" id="count-reminders">—</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</AdminLayout>
+
+<style>
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.625rem;
+    margin-bottom: 1rem;
+  }
+  .stat-card {
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .stat-card__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .stat-card__body {
+    flex: 1;
+    min-width: 0;
+  }
+  .stat-card__label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--fg-muted);
+    margin-bottom: 0.125rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .stat-card__value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .stat-card__delta {
+    font-size: 0.7rem;
+    color: var(--primary-strong);
+    margin-top: 0.25rem;
+  }
+
+  .bismillah-strip {
+    background: linear-gradient(135deg, var(--success-soft) 0%, var(--accent-soft) 100%);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+  .bismillah-strip__arabic {
+    font-family: var(--font-arabic);
+    font-size: 1.5rem;
+    color: var(--primary-strong);
+  }
+  .bismillah-strip__en {
+    font-size: 0.8rem;
+    color: var(--fg-muted);
+    font-style: italic;
+  }
+
+  .dash-cols {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .dash-panel {
+    padding: 1rem 1rem 0.5rem;
+  }
+  .dash-panel__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .dash-panel__title {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+  .dash-panel__link {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--primary-strong);
+    text-decoration: none;
+  }
+  .dash-panel__link:hover { text-decoration: underline; }
+  .dash-panel__body {
+    padding-bottom: 0.5rem;
+  }
+
+  .dash-empty {
+    padding: 1rem;
+    text-align: center;
+    color: var(--fg-faint);
+    font-size: 0.875rem;
+  }
+
+  .schedule-row,
+  .audit-row {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.625rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .schedule-row:last-child,
+  .audit-row:last-child {
+    border-bottom: none;
+  }
+  .schedule-row__icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--success-soft);
+    color: var(--primary-strong);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .schedule-row__info {
+    flex: 1;
+    min-width: 0;
+  }
+  .schedule-row__title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: capitalize;
+  }
+  .schedule-row__meta {
+    font-size: 0.75rem;
+    color: var(--fg-faint);
+  }
+  .schedule-row__time {
+    font-size: 0.75rem;
+    color: var(--primary-strong);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+
+  .audit-row__avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .audit-row__info {
+    flex: 1;
+    min-width: 0;
+  }
+  .audit-row__action {
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .audit-row__actor {
+    font-size: 0.75rem;
+    color: var(--fg-muted);
+  }
+  .audit-row__time {
+    font-size: 0.7rem;
+    color: var(--fg-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .content-overview {
+    padding: 1rem;
+  }
+  .content-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.625rem;
+    margin-top: 0.75rem;
+  }
+  .content-tile {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.75rem;
+    border-radius: var(--radius-md);
+    background: var(--bg-sunken);
+    border: 1px solid var(--border);
+  }
+  .content-tile__info {
+    flex: 1;
+    min-width: 0;
+  }
+  .content-tile__label {
+    font-size: 0.75rem;
+    color: var(--fg-muted);
+    font-weight: 500;
+  }
+  .content-tile__count {
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  @media (min-width: 768px) {
+    .stats-grid {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+    .dash-cols {
+      grid-template-columns: 1fr 1fr;
+    }
+    .content-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+</style>
+
+<script>
+  const ICONS: Record<string, string> = {
+    quran_verse: "book",
+    hadith: "users",
+    adhkar: "bell",
+    reminder: "sparkles",
+  };
+
+  function formatTime(iso?: string): string {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    const now = new Date();
+    const diffMs = d.getTime() - now.getTime();
+    if (diffMs < 0) return "Overdue";
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 60) return `in ${diffMin}m`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `in ${diffHr}h ${diffMin % 60}m`;
+    const diffDay = Math.floor(diffHr / 24);
+    return `in ${diffDay}d`;
+  }
+
+  function formatRelative(iso?: string): string {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    const now = new Date();
+    const diffSec = Math.floor((now.getTime() - d.getTime()) / 1000);
+    if (diffSec < 60) return `${diffSec}s ago`;
+    if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+    if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+    return `${Math.floor(diffSec / 86400)}d ago`;
+  }
+
+  function svg(name: string, size = 18): string {
+    // Reuse the inline svg set — re-render via fetch of icons isn't easy,
+    // so we keep a small set here for the dynamic UI.
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z M12 3v2M12 19v2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M3 12h2M19 12h2M5.6 18.4l1.4-1.4M17 7l1.4-1.4"/></svg>`;
+  }
+
+  async function loadStats() {
+    try {
+      const res = await fetch("/api/admin/stats", { headers: { Accept: "application/json" } });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Failed");
+
+      const s = data.stats;
+      const cards: Array<{ label: string; value: string | number; icon: string; bg: string }> = [
+        { label: "Subscribers", value: s.subscribers, icon: "users", bg: "var(--success-soft)" },
+        { label: "Active subs", value: s.subscriptions, icon: "bell", bg: "var(--accent-soft)" },
+        { label: "Published posts", value: s.published_posts, icon: "send", bg: "var(--info-soft)" },
+        { label: "Delivery rate", value: `${s.delivery.rate}%`, icon: "trending_up", bg: "var(--success-soft)" },
+      ];
+
+      const grid = document.getElementById("stats-grid");
+      if (grid) {
+        grid.innerHTML = cards.map((c) => `
+          <div class="stat-card card fade-in">
+            <div class="stat-card__icon" style="background:${c.bg};color:var(--primary-strong)">
+              ${svg(c.icon)}
+            </div>
+            <div class="stat-card__body">
+              <div class="stat-card__label">${c.label}</div>
+              <div class="stat-card__value">${c.value}</div>
+            </div>
+          </div>
+        `).join("");
+      }
+
+      // Upcoming schedules
+      const schedList = document.getElementById("schedules-list");
+      if (schedList) {
+        if (!data.scheduled || data.scheduled.length === 0) {
+          schedList.innerHTML = `<div class="dash-empty">No scheduled posts. <a href="/admin/posts" style="color:var(--primary-strong);font-weight:600">Compose one</a></div>`;
+        } else {
+          schedList.innerHTML = data.scheduled.map((p: any) => `
+            <div class="schedule-row">
+              <div class="schedule-row__icon">${svg(ICONS[p.contentType] ?? "send", 16)}</div>
+              <div class="schedule-row__info">
+                <div class="schedule-row__title">${p.contentType.replace("_", " ")}</div>
+                <div class="schedule-row__meta">${(p.channelTargets ?? []).length} channels</div>
+              </div>
+              <div class="schedule-row__time">${formatTime(p.scheduledFor)}</div>
+            </div>
+          `).join("");
+        }
+      }
+
+      // Audit feed
+      const auditList = document.getElementById("audit-list");
+      if (auditList) {
+        if (!data.recentAudit || data.recentAudit.length === 0) {
+          auditList.innerHTML = `<div class="dash-empty">No recent activity</div>`;
+        } else {
+          auditList.innerHTML = data.recentAudit.map((a: any) => `
+            <div class="audit-row">
+              <div class="audit-row__avatar">${(a.actor || "?").charAt(0).toUpperCase()}</div>
+              <div class="audit-row__info">
+                <div class="audit-row__action">${a.action}</div>
+                <div class="audit-row__actor">${a.actor}</div>
+              </div>
+              <div class="audit-row__time">${formatRelative(a.at)}</div>
+            </div>
+          `).join("");
+        }
+      }
+
+      // Content counts
+      const q = document.getElementById("count-quran");
+      const h = document.getElementById("count-hadith");
+      const ad = document.getElementById("count-adhkar");
+      const r = document.getElementById("count-reminders");
+      if (q) q.textContent = String(s.content.quran_verses);
+      if (h) h.textContent = String(s.content.hadiths);
+      if (ad) ad.textContent = String(s.content.adhkar);
+      if (r) r.textContent = String(s.content.reminders);
+    } catch (e) {
+      const grid = document.getElementById("stats-grid");
+      if (grid) {
+        grid.innerHTML = `<div class="card" style="padding:1.5rem;grid-column:1/-1;color:var(--danger)">${e instanceof Error ? e.message : "Failed to load stats"}</div>`;
+      }
+    }
+  }
+  loadStats();
+</script>
