@@ -1,0 +1,37 @@
+---
+import ContentListPage from "@/components/ContentListPage.astro";
+
+const REMINDER_CATEGORIES = [
+  { value: "general", label: "General" },
+  { value: "warning", label: "Warning" },
+  { value: "encouragement", label: "Encouragement" },
+  { value: "character", label: "Character" },
+  { value: "worship", label: "Worship" },
+  { value: "character_building", label: "Character Building" },
+  { value: "ethics", label: "Ethics" },
+];
+
+const LANGUAGES = [
+  { value: "en", label: "English" },
+  { value: "ar", label: "Arabic" },
+  { value: "fr", label: "French" },
+  { value: "ha", label: "Hausa" },
+  { value: "yo", label: "Yoruba" },
+  { value: "sw", label: "Swahili" },
+];
+---
+
+<ContentListPage
+  title="Reminders"
+  apiUrl="/api/admin/reminders"
+  newHref="/admin/reminders/new"
+  editHrefPrefix="/admin/reminders/"
+  activeNav="content"
+  searchPlaceholder="Search by title or body…"
+  cardType="reminder"
+  countLabel="reminders"
+  filters={[
+    { key: "category", label: "All categories", options: REMINDER_CATEGORIES },
+    { key: "language", label: "All languages", options: LANGUAGES },
+  ]}
+/>

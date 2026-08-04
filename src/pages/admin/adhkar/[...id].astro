@@ -1,0 +1,34 @@
+---
+import ContentEditPage from "@/components/ContentEditPage.astro";
+
+const CATEGORIES = [
+  { value: "morning", label: "Morning" },
+  { value: "evening", label: "Evening" },
+  { value: "sleep", label: "Sleep" },
+  { value: "after_prayer", label: "After Prayer" },
+  { value: "after_wudu", label: "After Wudu" },
+  { value: "travel", label: "Travel" },
+  { value: "food", label: "Food & Drink" },
+  { value: "distress", label: "Distress" },
+  { value: "protection", label: "Protection" },
+  { value: "tahleel", label: "Tahleel / General Dhikr" },
+];
+---
+
+<ContentEditPage
+  title="Adhkar"
+  backHref="/admin/adhkar"
+  apiUrl="/api/admin/adhkar"
+  collection="adhkar"
+  auditLabel="Dhikr"
+  fields={[
+    { name: "category", label: "Category", type: "select", required: true, options: CATEGORIES },
+    { name: "arabic", label: "Arabic text", type: "textarea", required: true, rtl: true, rows: 3, placeholder: "Arabic dhikr…" },
+    { name: "transliteration", label: "Transliteration", type: "textarea", rows: 2, placeholder: "Transliteration…" },
+    { name: "translation", label: "Translation", type: "textarea", required: true, rows: 3, placeholder: "English translation…" },
+    { name: "repeatCount", label: "Repeat count", type: "number", default: 1, placeholder: "1" },
+    { name: "order", label: "Display order (within category)", type: "number", default: 0, placeholder: "0" },
+    { name: "source", label: "Source", type: "text", placeholder: "Sahih Muslim 2723 — Hisn al-Muslim 91" },
+    { name: "tags", label: "Tags", type: "tags", placeholder: "morning, protection" },
+  ]}
+/>

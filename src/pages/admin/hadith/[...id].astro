@@ -1,0 +1,42 @@
+---
+import ContentEditPage from "@/components/ContentEditPage.astro";
+
+const COLLECTIONS = [
+  { value: "bukhari", label: "Sahih al-Bukhari" },
+  { value: "muslim", label: "Sahih Muslim" },
+  { value: "tirmidhi", label: "Jami at-Tirmidhi" },
+  { value: "abudawud", label: "Sunan Abu Dawud" },
+  { value: "nasai", label: "Sunan an-Nasa'i" },
+  { value: "ibnmajah", label: "Sunan Ibn Majah" },
+  { value: "malik", label: "Muwatta Malik" },
+  { value: "ahmad", label: "Musnad Ahmad" },
+];
+
+const GRADES = [
+  { value: "sahih", label: "Sahih" },
+  { value: "hasan", label: "Hasan" },
+  { value: "daif", label: "Daif" },
+  { value: "sahih-bukhari", label: "Sahih (Bukhari)" },
+  { value: "sahih-muslim", label: "Sahih (Muslim)" },
+];
+---
+
+<ContentEditPage
+  title="Hadith"
+  backHref="/admin/hadith"
+  apiUrl="/api/admin/hadith"
+  collection="hadiths"
+  auditLabel="Hadith"
+  fields={[
+    { name: "collection", label: "Collection", type: "select", required: true, options: COLLECTIONS },
+    { name: "hadithNumber", label: "Hadith number", type: "text", required: true, placeholder: "1" },
+    { name: "book", label: "Book (optional)", type: "text", placeholder: "Book of Revelationation" },
+    { name: "narratorAr", label: "Narrator (Arabic)", type: "text", rtl: true, placeholder: "عمر بن الخطاب رضي الله عنه" },
+    { name: "narratorEn", label: "Narrator (English)", type: "text", placeholder: "Umar ibn al-Khattab (RA)" },
+    { name: "textAr", label: "Arabic text", type: "textarea", required: true, rtl: true, rows: 4, placeholder: "Arabic hadith text…" },
+    { name: "textEn", label: "English translation", type: "textarea", required: true, rows: 4, placeholder: "English hadith text…" },
+    { name: "grade", label: "Grade", type: "select", options: GRADES },
+    { name: "source", label: "Source (translator / edition)", type: "text", placeholder: "Saheeh Muslim 8" },
+    { name: "tags", label: "Tags", type: "tags", placeholder: "intentions, foundation" },
+  ]}
+/>

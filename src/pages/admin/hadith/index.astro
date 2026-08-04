@@ -1,0 +1,37 @@
+---
+import ContentListPage from "@/components/ContentListPage.astro";
+
+const HADITH_COLLECTIONS = [
+  { value: "bukhari", label: "Sahih al-Bukhari" },
+  { value: "muslim", label: "Sahih Muslim" },
+  { value: "tirmidhi", label: "Jami at-Tirmidhi" },
+  { value: "abudawud", label: "Sunan Abu Dawud" },
+  { value: "nasai", label: "Sunan an-Nasa'i" },
+  { value: "ibnmajah", label: "Sunan Ibn Majah" },
+  { value: "malik", label: "Muwatta Malik" },
+  { value: "ahmad", label: "Musnad Ahmad" },
+];
+
+const HADITH_GRADES = [
+  { value: "sahih", label: "Sahih" },
+  { value: "hasan", label: "Hasan" },
+  { value: "daif", label: "Daif" },
+  { value: "sahih-bukhari", label: "Sahih (Bukhari)" },
+  { value: "sahih-muslim", label: "Sahih (Muslim)" },
+];
+---
+
+<ContentListPage
+  title="Hadiths"
+  apiUrl="/api/admin/hadith"
+  newHref="/admin/hadith/new"
+  editHrefPrefix="/admin/hadith/"
+  activeNav="content"
+  searchPlaceholder="Search by Arabic, English, or narrator…"
+  cardType="hadith"
+  countLabel="hadiths"
+  filters={[
+    { key: "collection", label: "All collections", options: HADITH_COLLECTIONS },
+    { key: "grade", label: "All grades", options: HADITH_GRADES },
+  ]}
+/>

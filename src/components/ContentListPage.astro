@@ -1,0 +1,356 @@
+---
+/**
+ * ContentListPage.astro — generic mobile-native list component for content types.
+ *
+ * Usage:
+ *   <ContentListPage
+ *     title="Hadiths"
+ *     apiUrl="/api/admin/hadith"
+ *     newHref="/admin/hadith/new"
+ *     editHrefPrefix="/admin/hadith/"
+ *     activeNav="content"
+ *     :searchFields="['textEn', 'textAr']"
+ *     :filters="[{key:'collection',label:'All collections',options:[...]}]"
+ *     cardRenderer="hadith"
+ *   />
+ */
+import AdminLayout from "@/layouts/AdminLayout.astro";
+import Icon from "@/components/Icon.astro";
+
+interface FilterOption { value: string; label: string }
+interface FilterConfig { key: string; label: string; options: FilterOption[] }
+
+interface Props {
+  title: string;
+  apiUrl: string;
+  newHref: string;
+  editHrefPrefix: string;
+  activeNav?: string;
+  searchPlaceholder?: string;
+  filters?: FilterConfig[];
+  cardType: "hadith" | "adhkar" | "reminder";
+  countLabel?: string;
+}
+
+const {
+  title,
+  apiUrl,
+  newHref,
+  editHrefPrefix,
+  activeNav = "content",
+  searchPlaceholder = "Search…",
+  filters = [],
+  cardType,
+  countLabel = "items",
+} = Astro.props;
+---
+
+<AdminLayout title={title} activeNav={activeNav}>
+  <div class="content-list-page" data-api-url={apiUrl} data-edit-prefix={editHrefPrefix} data-card-type={cardType}>
+    <div class="page-head">
+      <a href={newHref} class="btn btn-primary page-head__cta">
+        <Icon name="plus" size={16} />
+        New
+      </a>
+      <span class="chip chip-primary">
+        <Icon name="database" size={12} />
+        <span class="count-chip">…</span> {countLabel}
+      </span>
+    </div>
+
+    <div class="filter-bar">
+      <div class="search-input">
+        <Icon name="search" size={16} />
+        <input type="search" class="search-input__field" placeholder={searchPlaceholder} autocomplete="off" />
+      </div>
+      {filters.map((f) => (
+        <select class="select filter-select" data-filter-key={f.key}>
+          <option value="">{f.label}</option>
+          {f.options.map((opt) => (
+            <option value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      ))}
+    </div>
+
+    <div class="list content-list">
+      <div class="card shimmer-card" style="padding:1.5rem">
+        <div class="shimmer" style="height:14px;width:60%;border-radius:4px"></div>
+      </div>
+    </div>
+
+    <div class="pagination" hidden>
+      <button class="btn btn-outline load-more">Load more</button>
+    </div>
+  </div>
+</AdminLayout>
+
+<style>
+  .content-list-page {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+  }
+  .page-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.625rem;
+  }
+  .page-head__cta { min-height: 40px; }
+
+  .filter-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .search-input {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0 0.875rem;
+    background: var(--bg-elev);
+    border: 1.5px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    color: var(--fg-faint);
+    transition: border 0.15s, color 0.15s;
+    min-height: 44px;
+  }
+  .search-input:focus-within {
+    border-color: var(--primary);
+    color: var(--primary-strong);
+  }
+  .search-input__field {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--fg);
+    font-size: 0.95rem;
+  }
+  .filter-select { min-height: 44px; }
+
+  .list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .content-card {
+    padding: 0.875rem 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    transition: border 0.15s, transform 0.15s;
+    text-decoration: none;
+    color: inherit;
+  }
+  .content-card:hover { border-color: var(--primary); text-decoration: none; }
+  .content-card:active { transform: scale(0.99); }
+  .content-card__body {
+    flex: 1;
+    min-width: 0;
+  }
+  .content-card__title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+  .content-card__subtitle {
+    font-size: 0.75rem;
+    color: var(--fg-muted);
+    margin-bottom: 0.375rem;
+  }
+  .content-card__arabic {
+    font-family: var(--font-arabic);
+    font-size: 1.05rem;
+    color: var(--fg);
+    direction: rtl;
+    margin-bottom: 0.25rem;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .content-card__text {
+    font-size: 0.85rem;
+    color: var(--fg-muted);
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+  }
+  .content-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+  }
+  .content-card__meta .chip {
+    font-size: 0.65rem;
+    padding: 0.125rem 0.5rem;
+  }
+  .content-card__actions {
+    align-self: center;
+    color: var(--fg-faint);
+    flex-shrink: 0;
+  }
+
+  .empty-state {
+    padding: 3rem 1rem;
+    text-align: center;
+    color: var(--fg-faint);
+  }
+  .empty-state__title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--fg);
+    margin-bottom: 0.25rem;
+  }
+
+  .pagination {
+    display: flex;
+    justify-content: center;
+    padding: 1rem 0;
+  }
+
+  @media (min-width: 768px) {
+    .filter-bar { flex-direction: row; }
+    .filter-select { width: 200px; }
+  }
+</style>
+
+<script>
+  function escapeHtml(s: string): string {
+    return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[c]!));
+  }
+
+  function renderCard(cardType: string, item: any, editPrefix: string): string {
+    const editHref = `${editPrefix}${item.id}`;
+    const chevron = `<div class="content-card__actions"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>`;
+
+    if (cardType === "hadith") {
+      return `
+        <a href="${editHref}" class="card content-card fade-in">
+          <div class="content-card__body">
+            <div class="content-card__subtitle">${escapeHtml(item.collection)} · #${escapeHtml(item.hadithNumber)}</div>
+            <div class="content-card__arabic" dir="rtl" lang="ar">${escapeHtml(item.textAr ?? "")}</div>
+            <div class="content-card__text">${escapeHtml(item.textEn ?? "")}</div>
+            <div class="content-card__meta">
+              ${item.grade ? `<span class="chip chip-primary">${escapeHtml(item.grade)}</span>` : ""}
+              ${(item.tags || []).slice(0, 3).map((t: string) => `<span class="chip">${escapeHtml(t)}</span>`).join("")}
+            </div>
+          </div>
+          ${chevron}
+        </a>
+      `;
+    }
+
+    if (cardType === "adhkar") {
+      const categoryLabel: Record<string, string> = {
+        morning: "Morning", evening: "Evening", sleep: "Sleep", after_prayer: "After Prayer",
+        after_wudu: "After Wudu", travel: "Travel", food: "Food", distress: "Distress",
+        protection: "Protection", tahleel: "Tahleel",
+      };
+      return `
+        <a href="${editHref}" class="card content-card fade-in">
+          <div class="content-card__body">
+            <div class="content-card__subtitle">${escapeHtml(categoryLabel[item.category] ?? item.category)} · ×${escapeHtml(item.repeatCount ?? 1)}</div>
+            <div class="content-card__arabic" dir="rtl" lang="ar">${escapeHtml(item.arabic ?? "")}</div>
+            <div class="content-card__text">${escapeHtml(item.translation ?? "")}</div>
+          </div>
+          ${chevron}
+        </a>
+      `;
+    }
+
+    // reminder
+    const categoryLabel: Record<string, string> = {
+      general: "General", warning: "Warning", encouragement: "Encouragement",
+      character: "Character", worship: "Worship", character_building: "Character Building", ethics: "Ethics",
+    };
+    return `
+      <a href="${editHref}" class="card content-card fade-in">
+        <div class="content-card__body">
+          <div class="content-card__title">${escapeHtml(item.title ?? "")}</div>
+          <div class="content-card__subtitle">${escapeHtml(categoryLabel[item.category] ?? item.category)} · ${escapeHtml(item.language ?? "en")}</div>
+          <div class="content-card__text">${escapeHtml(item.body ?? "")}</div>
+        </div>
+        ${chevron}
+      </a>
+    `;
+  }
+
+  document.querySelectorAll<HTMLElement>(".content-list-page").forEach((page) => {
+    const apiUrl = page.dataset.apiUrl!;
+    const editPrefix = page.dataset.editPrefix!;
+    const cardType = page.dataset.cardType!;
+
+    let cursor: string | undefined;
+    let currentSearch = "";
+    const currentFilters: Record<string, string> = {};
+    const list = page.querySelector<HTMLElement>(".content-list")!;
+    const searchInput = page.querySelector<HTMLInputElement>(".search-input__field")!;
+    const countChip = page.querySelector<HTMLElement>(".count-chip");
+    const pagination = page.querySelector<HTMLElement>(".pagination")!;
+    const loadMoreBtn = page.querySelector<HTMLButtonElement>(".load-more")!;
+
+    async function load(reset = true) {
+      if (reset) {
+        cursor = undefined;
+        list.innerHTML = `<div class="card shimmer-card" style="padding:1.5rem"><div class="shimmer" style="height:14px;width:60%;border-radius:4px"></div></div>`;
+      }
+      const params = new URLSearchParams();
+      if (currentSearch) params.set("search", currentSearch);
+      for (const [k, v] of Object.entries(currentFilters)) {
+        if (v) params.set(k, v);
+      }
+      params.set("limit", "25");
+      if (cursor) params.set("after", cursor);
+
+      try {
+        const res = await fetch(`${apiUrl}?${params}`, { headers: { Accept: "application/json" } });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "Failed");
+
+        if (countChip) countChip.textContent = String(data.count);
+        const rows = data.data.map((item: any) => renderCard(cardType, item, editPrefix)).join("");
+        if (reset) {
+          if (data.data.length === 0) {
+            list.innerHTML = `<div class="empty-state"><div class="empty-state__title">Nothing here yet</div><a href="${page.querySelector(".page-head__cta")?.getAttribute("href")}" style="color:var(--primary-strong);font-weight:600">Create the first one</a></div>`;
+          } else {
+            list.innerHTML = rows;
+          }
+        } else {
+          list.insertAdjacentHTML("beforeend", rows);
+        }
+        pagination.hidden = !data.hasMore;
+        if (data.data.length > 0) cursor = data.data[data.data.length - 1].id;
+      } catch (e) {
+        list.innerHTML = `<div class="card" style="padding:1.5rem;color:var(--danger)">${e instanceof Error ? e.message : "Failed to load"}</div>`;
+      }
+    }
+
+    let timer: ReturnType<typeof setTimeout>;
+    searchInput?.addEventListener("input", () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        currentSearch = searchInput.value.trim();
+        load(true);
+      }, 300);
+    });
+
+    page.querySelectorAll<HTMLSelectElement>(".filter-select").forEach((sel) => {
+      sel.addEventListener("change", () => {
+        currentFilters[sel.dataset.filterKey!] = sel.value;
+        load(true);
+      });
+    });
+
+    loadMoreBtn?.addEventListener("click", () => load(false));
+    load(true);
+  });
+</script>

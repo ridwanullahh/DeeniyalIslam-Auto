@@ -1,0 +1,30 @@
+---
+import ContentListPage from "@/components/ContentListPage.astro";
+
+const ADHKAR_CATEGORIES = [
+  { value: "morning", label: "Morning Adhkar" },
+  { value: "evening", label: "Evening Adhkar" },
+  { value: "sleep", label: "Sleep Adhkar" },
+  { value: "after_prayer", label: "After Prayer" },
+  { value: "after_wudu", label: "After Wudu" },
+  { value: "travel", label: "Travel" },
+  { value: "food", label: "Food & Drink" },
+  { value: "distress", label: "Distress" },
+  { value: "protection", label: "Protection" },
+  { value: "tahleel", label: "Tahleel / General Dhikr" },
+];
+---
+
+<ContentListPage
+  title="Adhkar"
+  apiUrl="/api/admin/adhkar"
+  newHref="/admin/adhkar/new"
+  editHrefPrefix="/admin/adhkar/"
+  activeNav="content"
+  searchPlaceholder="Search by Arabic, transliteration, or translation…"
+  cardType="adhkar"
+  countLabel="adhkar"
+  filters={[
+    { key: "category", label: "All categories", options: ADHKAR_CATEGORIES },
+  ]}
+/>

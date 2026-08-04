@@ -1,0 +1,38 @@
+---
+import ContentEditPage from "@/components/ContentEditPage.astro";
+
+const CATEGORIES = [
+  { value: "general", label: "General" },
+  { value: "warning", label: "Warning" },
+  { value: "encouragement", label: "Encouragement" },
+  { value: "character", label: "Character" },
+  { value: "worship", label: "Worship" },
+  { value: "character_building", label: "Character Building" },
+  { value: "ethics", label: "Ethics" },
+];
+
+const LANGUAGES = [
+  { value: "en", label: "English" },
+  { value: "ar", label: "Arabic" },
+  { value: "fr", label: "French" },
+  { value: "ha", label: "Hausa" },
+  { value: "yo", label: "Yoruba" },
+  { value: "sw", label: "Swahili" },
+];
+---
+
+<ContentEditPage
+  title="Reminder"
+  backHref="/admin/reminders"
+  apiUrl="/api/admin/reminders"
+  collection="reminders"
+  auditLabel="Reminder"
+  fields={[
+    { name: "title", label: "Title", type: "text", required: true, placeholder: "The Weight of Intentions" },
+    { name: "category", label: "Category", type: "select", required: true, options: CATEGORIES },
+    { name: "language", label: "Language", type: "select", required: true, options: LANGUAGES, default: "en" },
+    { name: "body", label: "Body", type: "textarea", required: true, rows: 6, placeholder: "Full reminder text…" },
+    { name: "source", label: "Source (optional)", type: "text", placeholder: "Bukhari 1; Muslim 1907" },
+    { name: "tags", label: "Tags", type: "tags", placeholder: "intention, nawawi-1" },
+  ]}
+/>
