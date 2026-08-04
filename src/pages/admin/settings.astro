@@ -2,6 +2,9 @@
 import AdminLayout from "@/layouts/AdminLayout.astro";
 import Icon from "@/components/Icon.astro";
 import { CONFIG, BRAND } from "@/config";
+import { isCloudinaryEnabled, getConfigSnapshot } from "@/lib/cloudinary";
+
+const cdSnap = getConfigSnapshot();
 ---
 
 <AdminLayout title="Settings" activeNav="settings">
@@ -77,6 +80,43 @@ import { CONFIG, BRAND } from "@/config";
     <div class="panel__body">
       <div class="row"><span>Status</span><strong class:list={["chip", CONFIG.scheduler.enabled ? "chip-primary" : ""]}>{CONFIG.scheduler.enabled ? "Enabled" : "Disabled"}</strong></div>
       <div class="row"><span>Poll interval</span><strong>{CONFIG.scheduler.pollIntervalSec}s</strong></div>
+    </div>
+  </section>
+
+  <section class="card panel">
+    <header class="panel__head">
+      <h2><Icon name="shield" size={18} /> ToS Guardrails</h2>
+    </header>
+    <div class="panel__body">
+      <p class="hint">Hard limits to prevent platform bans. Configurable via env vars (GUARD_*).</p>
+      <div class="row"><span>Max per subscriber per hour</span><strong>{CONFIG.guardrails.maxPerSubscriberPerHour}</strong></div>
+      <div class="row"><span>Max per subscriber per day</span><strong>{CONFIG.guardrails.maxPerSubscriberPerDay}</strong></div>
+      <div class="row"><span>Min delay between sends</span><strong>{CONFIG.guardrails.minDelayBetweenSendsSec}s</strong></div>
+      <div class="row"><span>Max per channel per minute</span><strong>{CONFIG.guardrails.maxChannelPerMinute}</strong></div>
+      <div class="row"><span>Honor opt-out</span><strong class:list={["chip", "chip-primary"]}>{CONFIG.guardrails.honorOptOut ? "Yes" : "No"}</strong></div>
+    </div>
+  </section>
+
+  <section class="card panel">
+    <header class="panel__head">
+      <h2><Icon name="database" size={18} /> Cloudinary (Mushaf Media)</h2>
+    </header>
+    <div class="panel__body">
+      <div class="row"><span>Status</span><strong class:list={["chip", cdSnap.enabled ? "chip-primary" : ""]}>{cdSnap.enabled ? "Enabled" : "Disabled (using Lightbase fallback)"}</strong></div>
+      <div class="row"><span>Cloud name</span><strong>{cdSnap.cloudName || "—"}</strong></div>
+      <div class="row"><span>API key</span><strong>{cdSnap.apiKey || "—"}</strong></div>
+      <div class="row"><span>Mushaf folder</span><strong>{cdSnap.mushafFolder}</strong></div>
+    </div>
+  </section>
+
+  <section class="card panel">
+    <header class="panel__head">
+      <h2><Icon name="clock" size={18} /> Solah Times API (Aladhan)</h2>
+    </header>
+    <div class="panel__body">
+      <div class="row"><span>API base</span><strong>{CONFIG.salah.apiBase}</strong></div>
+      <div class="row"><span>Calculation method</span><strong>{CONFIG.salah.method} ({CONFIG.salah.method === 3 ? "Muslim World League" : "see Aladhan docs"})</strong></div>
+      <div class="row"><span>Asr school</span><strong>{CONFIG.salah.school === 0 ? "Shafi (standard)" : "Hanafi"}</strong></div>
     </div>
   </section>
 
