@@ -1,0 +1,183 @@
+---
+/**
+ * BaseLayout.astro — the root layout for ALL pages (public + admin).
+ * Mobile-native viewport, brand fonts, theme bootstrap, theme toggle in header.
+ *
+ * Slots:
+ *   - default: the page body
+ *   - "head": extra <head> tags (per-page)
+ *   - "header": optional custom header (otherwise default TopBar is rendered)
+ *   - "footer": optional custom footer (otherwise default bottom padding)
+ *
+ * Props:
+ *   - title: <title> text
+ *   - description: <meta description>
+ *   - bare: when true, omit default TopBar + BottomNav (used for login, embeds)
+ *   - bodyClass: extra class on <body>
+ */
+import "@/styles/global.css";
+import ThemeToggle from "@/components/ThemeToggle.astro";
+import { CONFIG, BRAND } from "@/config";
+
+interface Props {
+  title?: string;
+  description?: string;
+  bare?: boolean;
+  bodyClass?: string;
+  activeNav?: string;
+}
+const {
+  title = "DeeniyalIslam Auto",
+  description = "Daily Islamic reminders, Qur'an, Hadith, Adhkar — delivered to your inbox and feed.",
+  bare = false,
+  bodyClass = "",
+  activeNav = "",
+} = Astro.props;
+
+const fullTitle = title === CONFIG.appName ? title : `${title} — ${CONFIG.appName}`;
+---
+
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content={BRAND.primary} media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content={BRAND.dark} media="(prefers-color-scheme: dark)" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <title>{fullTitle}</title>
+
+    <!-- Google Fonts: Inter + Scheherazade New for Arabic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Scheherazade+New:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+
+    <slot name="head" />
+
+    <!-- Pre-paint theme bootstrap (prevents FOUC) -->
+    <script is:inline>
+      (function () {
+        try {
+          const stored = localStorage.getItem("di-theme");
+          const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          const theme = stored ?? (prefersDark ? "dark" : "light");
+          document.documentElement.setAttribute("data-theme", theme);
+          if (theme === "dark") document.documentElement.classList.add("dark");
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+
+  <body class:list={["app-shell", bodyClass]}>
+    <slot name="header">
+      {!bare && (
+        <header class="topbar safe-top">
+          <div class="topbar__inner">
+            <a href="/" class="topbar__brand" aria-label="DeeniyalIslam Auto home">
+              <span class="topbar__logo" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 21h18M5 21V11l7-5 7 5v10M9 21v-5h6v5M12 6V3" />
+                </svg>
+              </span>
+              <span class="topbar__title">DeeniyalIslam Auto</span>
+            </a>
+            <div class="topbar__actions">
+              <ThemeToggle />
+            </div>
+          </div>
+        </header>
+      )}
+    </slot>
+
+    <main class:list={["app-main", bare && "app-main--bare"]} data-active-nav={activeNav}>
+      <slot />
+    </main>
+
+    <slot name="footer">
+      {!bare && <div class="safe-bottom" style="height: env(safe-area-inset-bottom, 0px); min-height: 80px;" aria-hidden="true"></div>}
+    </slot>
+
+    <style>
+      .app-shell {
+        display: flex;
+        flex-direction: column;
+        min-height: 100dvh;
+      }
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        background: color-mix(in srgb, var(--bg-elev) 88%, transparent);
+        backdrop-filter: saturate(180%) blur(20px);
+        -webkit-backdrop-filter: saturate(180%) blur(20px);
+        border-bottom: 1px solid var(--border);
+      }
+      .topbar__inner {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0.625rem 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+      .topbar__brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.625rem;
+        color: var(--fg);
+        text-decoration: none;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+      .topbar__brand:hover { text-decoration: none; }
+      .topbar__logo {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-strong) 100%);
+        color: #fff;
+        box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 35%, transparent);
+      }
+      .topbar__title {
+        font-size: 1rem;
+        line-height: 1;
+      }
+      .topbar__actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .app-main {
+        flex: 1;
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 1rem;
+      }
+      .app-main--bare {
+        max-width: 480px;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        padding: 0;
+      }
+      @media (min-width: 768px) {
+        .app-main {
+          padding: 1.5rem 1.5rem 3rem;
+        }
+      }
+    </style>
+  </body>
+</html>

@@ -1,0 +1,349 @@
+/* =============================================================================
+   DeeniyalIslam Auto — Global Styles
+   Mobile-native, light-by-default with dark mode toggle.
+   Brand palette tokens; no emoji anywhere.
+   ========================================================================== */
+
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* Tailwind v4 theme tokens — exposed as CSS vars so we can swap them in dark mode */
+@theme {
+  --color-brand-primary: #05b34d;
+  --color-brand-primary-strong: #049942;
+  --color-brand-primary-soft: #d6f7e4;
+  --color-brand-accent: #f2b91c;
+  --color-brand-accent-strong: #d9a313;
+  --color-brand-accent-soft: #fdf0c5;
+  --color-brand-dark: #181f25;
+  --color-brand-dark-soft: #232c34;
+  --color-brand-light: #e9fbf1;
+  --color-brand-white: #ffffff;
+
+  --font-sans: "Inter", "Noto Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-arabic: "Scheherazade New", "Amiri", "Noto Naskh Arabic", "Scheherazade", serif;
+  --font-mono: "JetBrains Mono", "Sarasa Mono SC", "Menlo", monospace;
+
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 28px;
+  --radius-2xl: 36px;
+
+  --shadow-soft: 0 2px 6px rgba(24, 31, 37, 0.06), 0 1px 2px rgba(24, 31, 37, 0.04);
+  --shadow-card: 0 8px 24px rgba(24, 31, 37, 0.08), 0 2px 6px rgba(24, 31, 37, 0.04);
+  --shadow-pop: 0 16px 48px rgba(24, 31, 37, 0.16), 0 4px 12px rgba(24, 31, 37, 0.08);
+
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ---------------------------------------------------------------------------
+   Theme variables — light is default; dark is opt-in via [data-theme="dark"]
+   or .dark on <html>. Both selectors are honoured so we don't fight Tailwind.
+   ------------------------------------------------------------------------- */
+:root {
+  --bg: #e9fbf1;
+  --bg-elev: #ffffff;
+  --bg-sunken: #d8f4e6;
+  --fg: #181f25;
+  --fg-muted: #4a555d;
+  --fg-faint: #8a949c;
+  --border: #d6efe0;
+  --border-strong: #b7e2c8;
+  --accent: #f2b91c;
+  --primary: #05b34d;
+  --primary-strong: #049942;
+  --danger: #dc2626;
+  --danger-soft: #fee2e2;
+  --warning: #d97706;
+  --warning-soft: #fef3c7;
+  --info: #0284c7;
+  --info-soft: #e0f2fe;
+  --success: #05b34d;
+  --success-soft: #d6f7e4;
+  --shadow-card: 0 8px 24px rgba(24, 31, 37, 0.08), 0 2px 6px rgba(24, 31, 37, 0.04);
+  --backdrop: rgba(24, 31, 37, 0.48);
+  color-scheme: light;
+}
+
+:root[data-theme="dark"],
+:root.dark {
+  --bg: #181f25;
+  --bg-elev: #232c34;
+  --bg-sunken: #131820;
+  --fg: #f3f7f5;
+  --fg-muted: #b3c0c8;
+  --fg-faint: #7b8a93;
+  --border: #2f3a44;
+  --border-strong: #3e4b56;
+  --accent: #f2b91c;
+  --primary: #1ad06a;
+  --primary-strong: #34d97c;
+  --danger: #f87171;
+  --danger-soft: #3a1f1f;
+  --warning: #fbbf24;
+  --warning-soft: #3a2f0e;
+  --info: #38bdf8;
+  --info-soft: #0e2433;
+  --success: #1ad06a;
+  --success-soft: #16321f;
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.2);
+  --backdrop: rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
+}
+
+/* ---------------------------------------------------------------------------
+   Base layer
+   ------------------------------------------------------------------------- */
+@layer base {
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    background: var(--bg);
+    color: var(--fg);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--fg);
+    margin: 0;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  a {
+    color: var(--primary-strong);
+    text-decoration: none;
+  }
+
+  a:hover {
+    text-decoration: underline;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    border: none;
+    background: none;
+    padding: 0;
+  }
+
+  input, textarea, select {
+    font: inherit;
+    color: inherit;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  ::selection {
+    background: var(--primary);
+    color: #fff;
+  }
+
+  /* Arabic typography — applied via .font-arabic or [lang="ar"] */
+  .font-arabic,
+  [lang="ar"],
+  [dir="rtl"] {
+    font-family: var(--font-arabic);
+    line-height: 1.9;
+    font-feature-settings: "calt", "liga";
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Utility components — composable building blocks used across pages
+   ------------------------------------------------------------------------- */
+@layer components {
+
+  /* Card — the workhorse surface */
+  .card {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card);
+  }
+
+  .card-tight {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 0.95rem;
+    line-height: 1;
+    transition: transform 0.15s var(--ease-spring), background 0.15s, box-shadow 0.15s;
+    min-height: 44px;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-primary {
+    background: var(--primary);
+    color: #fff;
+  }
+  .btn-primary:hover { background: var(--primary-strong); }
+
+  .btn-accent {
+    background: var(--accent);
+    color: var(--brand-dark);
+  }
+  .btn-accent:hover { background: var(--accent-strong); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--fg);
+  }
+  .btn-ghost:hover { background: var(--bg-sunken); }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--primary-strong);
+    border: 1.5px solid var(--border-strong);
+  }
+  .btn-outline:hover { border-color: var(--primary); }
+
+  .btn-danger {
+    background: var(--danger);
+    color: #fff;
+  }
+  .btn-danger:hover { filter: brightness(0.92); }
+
+  /* Inputs */
+  .input,
+  .textarea,
+  .select {
+    width: 100%;
+    background: var(--bg-elev);
+    border: 1.5px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    padding: 0.75rem 1rem;
+    color: var(--fg);
+    transition: border 0.15s, box-shadow 0.15s;
+    min-height: 44px;
+  }
+  .input:focus,
+  .textarea:focus,
+  .select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+  }
+
+  /* Chips */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--bg-sunken);
+    color: var(--fg-muted);
+    border: 1px solid var(--border);
+  }
+  .chip-primary {
+    background: var(--success-soft);
+    color: var(--primary-strong);
+    border-color: var(--border-strong);
+  }
+  .chip-accent {
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+    border-color: var(--accent);
+  }
+
+  /* Mobile-native top safe area padding */
+  .safe-top { padding-top: env(safe-area-inset-top, 0px); }
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+  /* Hide scrollbar but keep scroll */
+  .no-scrollbar { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+
+  /* Staggered fade-in for content */
+  .fade-in { animation: fadeIn 0.4s ease-out both; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Skeleton shimmer for loading states */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--bg-sunken) 0%,
+      var(--border) 50%,
+      var(--bg-sunken) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s linear infinite;
+    border-radius: var(--radius-sm);
+  }
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Mobile-first viewport helpers
+   ------------------------------------------------------------------------- */
+@media (min-width: 768px) {
+  .desktop-only { display: block; }
+  .mobile-only { display: none; }
+}
+@media (max-width: 767px) {
+  .desktop-only { display: none; }
+  .mobile-only { display: block; }
+}
+
+/* Reduce motion respect */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

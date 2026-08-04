@@ -1,0 +1,182 @@
+---
+/**
+ * Landing page placeholder — full public home is built in Phase 6.
+ * For now, this verifies the layout, theme toggle, and design system work.
+ */
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import Icon from "@/components/Icon.astro";
+import { CONFIG } from "@/config";
+---
+
+<BaseLayout title="DeeniyalIslam Auto" activeNav="home">
+  <section class="hero fade-in">
+    <div class="hero__eyebrow">
+      <Icon name="sparkles" size={14} />
+      <span>Bismillah — welcome to the platform</span>
+    </div>
+    <h1 class="hero__title">Daily remembrance of Allah, delivered.</h1>
+    <p class="hero__lede">
+      Qur'an verses, authentic Hadith, morning and evening Adhkar — sent to your
+      WhatsApp, Telegram, Discord, or Messenger inbox on a schedule that fits your
+      day, in your timezone. No noise, no distraction, just Barakah.
+    </p>
+    <div class="hero__actions">
+      <a href="/subscribe" class="btn btn-primary">
+        <Icon name="bell" size={18} />
+        Subscribe now
+      </a>
+      <a href="/quran" class="btn btn-outline">
+        <Icon name="book" size={18} />
+        Read the Qur'an
+      </a>
+    </div>
+  </section>
+
+  <section class="cards fade-in" style="animation-delay: 0.1s">
+    <article class="card card--feature">
+      <div class="card__icon card__icon--primary">
+        <Icon name="book" size={22} />
+      </div>
+      <h3>Qur'an — Mushaf & Verses</h3>
+      <p>Browse the full Mushaf page-by-page, or read individual verses with translation and transliteration.</p>
+    </article>
+    <article class="card card--feature">
+      <div class="card__icon card__icon--accent">
+        <Icon name="users" size={22} />
+      </div>
+      <h3>Authentic Hadith</h3>
+      <p>Selected narrations from Bukhari, Muslim, Tirmidhi, Abu Dawud — graded and sourced.</p>
+    </article>
+    <article class="card card--feature">
+      <div class="card__icon card__icon--primary">
+        <Icon name="bell" size={22} />
+      </div>
+      <h3>Morning & Evening Adhkar</h3>
+      <p>The Sunnah remembrances, scheduled to arrive at Fajr and Maghrib in your timezone.</p>
+    </article>
+    <article class="card card--feature">
+      <div class="card__icon card__icon--accent">
+        <Icon name="globe" size={22} />
+      </div>
+      <h3>Timezone-aware</h3>
+      <p>Subscribers in Lagos, London, and Jakarta each get reminders at their local Fajr time.</p>
+    </article>
+  </section>
+
+  <section class="bismillah fade-in" style="animation-delay: 0.2s">
+    <p class="bismillah__arabic" dir="rtl" lang="ar">
+      بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+    </p>
+    <p class="bismillah__translation">In the name of Allah, the Most Gracious, the Most Merciful.</p>
+  </section>
+</BaseLayout>
+
+<style>
+  .hero {
+    padding: 2.5rem 0 2rem;
+    text-align: center;
+  }
+  .hero__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+    border: 1px solid var(--accent);
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+  }
+  .hero__title {
+    font-size: clamp(2rem, 7vw, 3.25rem);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    margin-bottom: 1rem;
+    background: linear-gradient(135deg, var(--fg) 0%, var(--primary-strong) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero__lede {
+    font-size: 1.05rem;
+    color: var(--fg-muted);
+    max-width: 36rem;
+    margin: 0 auto 1.75rem;
+    line-height: 1.6;
+  }
+  .hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.625rem;
+    justify-content: center;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    margin: 2rem 0;
+  }
+  .card--feature {
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .card--feature h3 {
+    font-size: 1.05rem;
+  }
+  .card--feature p {
+    color: var(--fg-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+  .card__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.25rem;
+  }
+  .card__icon--primary {
+    background: var(--success-soft);
+    color: var(--primary-strong);
+  }
+  .card__icon--accent {
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+  }
+
+  .bismillah {
+    margin: 2.5rem 0 1rem;
+    padding: 2rem 1rem;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    text-align: center;
+  }
+  .bismillah__arabic {
+    font-size: 1.75rem;
+    color: var(--primary-strong);
+    margin-bottom: 0.5rem;
+  }
+  .bismillah__translation {
+    color: var(--fg-muted);
+    font-style: italic;
+    font-size: 0.9rem;
+  }
+
+  @media (min-width: 768px) {
+    .cards {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+    .hero {
+      padding: 4rem 0 3rem;
+    }
+  }
+</style>

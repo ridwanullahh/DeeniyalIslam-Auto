@@ -1,0 +1,127 @@
+---
+/**
+ * ThemeToggle.astro — Light/dark toggle, persisted to localStorage,
+ * respects prefers-color-scheme on first visit.
+ * Inline script runs before paint to avoid FOUC.
+ */
+interface Props {
+  class?: string;
+}
+const { class: cls = "" } = Astro.props;
+---
+
+<button
+  id="theme-toggle"
+  type="button"
+  class:list={[
+    "btn btn-ghost",
+    "theme-toggle",
+    cls,
+  ]}
+  aria-label="Toggle dark mode"
+  data-theme-toggle
+>
+  <span class="theme-toggle__icon theme-toggle__icon--sun">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 3v2M12 19v2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M3 12h2M19 12h2M5.6 18.4l1.4-1.4M17 7l1.4-1.4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
+    </svg>
+  </span>
+  <span class="theme-toggle__icon theme-toggle__icon--moon">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11Z" />
+    </svg>
+  </span>
+</button>
+
+<style>
+  .theme-toggle {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-elev);
+    transition: background 0.15s, border-color 0.15s, transform 0.15s;
+  }
+  .theme-toggle:hover {
+    border-color: var(--primary);
+    background: var(--bg-sunken);
+  }
+  .theme-toggle:active { transform: scale(0.92); }
+  .theme-toggle__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.25s, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  /* Default (light) mode: show moon (target) */
+  :global([data-theme="light"]) .theme-toggle__icon--sun,
+  :global(:root:not([data-theme="dark"])) .theme-toggle__icon--sun {
+    opacity: 0;
+    transform: rotate(-90deg) scale(0.4);
+    position: absolute;
+  }
+  :global([data-theme="light"]) .theme-toggle__icon--moon,
+  :global(:root:not([data-theme="dark"])) .theme-toggle__icon--moon {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+  /* Dark mode: show sun (target) */
+  :global([data-theme="dark"]) .theme-toggle__icon--sun {
+    opacity: 1;
+    transform: rotate(0) scale(1);
+  }
+  :global([data-theme="dark"]) .theme-toggle__icon--moon {
+    opacity: 0;
+    transform: rotate(90deg) scale(0.4);
+    position: absolute;
+  }
+</style>
+
+<script is:inline define:vars={{}}>
+  // Inline pre-paint script: read localStorage or prefers-color-scheme.
+  (function () {
+    try {
+      const stored = localStorage.getItem("di-theme");
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const theme = stored ?? (prefersDark ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+      if (theme === "dark") {
+        document.documentElement.classList.add("dark");
+      }
+    } catch (e) {
+      /* noop */
+    }
+  })();
+</script>
+
+<script>
+  // Toggle handler — runs after the inline script has set the initial theme.
+  function bindToggle() {
+    const btn = document.querySelector("[data-theme-toggle]");
+    if (!btn) return;
+    btn.addEventListener("click", () => {
+      const root = document.documentElement;
+      const current = root.getAttribute("data-theme") === "dark" ? "dark" : "light";
+      const next = current === "dark" ? "light" : "dark";
+      root.setAttribute("data-theme", next);
+      if (next === "dark") root.classList.add("dark");
+      else root.classList.remove("dark");
+      try {
+        localStorage.setItem("di-theme", next);
+      } catch (e) {
+        /* noop */
+      }
+      // Notify any listeners (e.g. charts that need to re-render)
+      window.dispatchEvent(new CustomEvent("themechange", { detail: { theme: next } }));
+    });
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", bindToggle);
+  } else {
+    bindToggle();
+  }
+</script>

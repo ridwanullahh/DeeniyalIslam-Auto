@@ -1,0 +1,41 @@
+# Build artifacts
+dist/
+.astro/
+.output/
+.vercel/
+
+# Dependencies
+node_modules/
+
+# Env files (keep .env.example committed; .env is local secrets)
+.env
+.env.local
+.env.*.local
+
+# Bot session storage (Bailey auth state per-session)
+.auth_state/
+.auth_state-*/
+sessions/
+*.auth.json
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Local temp uploads
+uploads/
+tmp/
+
+# Plan / context dir used by the dev agent
+.agent-ctx/
