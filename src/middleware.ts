@@ -9,6 +9,7 @@ import { defineMiddleware } from "astro:middleware";
 import { verifySession } from "@/lib/auth/session";
 import { CONFIG } from "@/config";
 import { logger } from "@/lib/logger";
+import { ensureBackgroundWorkers } from "@/lib/lifecycle";
 
 const log = logger("middleware");
 
@@ -23,6 +24,9 @@ const PUBLIC_ADMIN_PATHS = new Set([
 const SESSION_COOKIE = "di_admin";
 
 export const onRequest = defineMiddleware(async (ctx, next) => {
+  // Lazy-start background workers on first request
+  ensureBackgroundWorkers().catch((e) => log.error({ err: e }, "Background workers failed"));
+
   const { url, request } = ctx;
   const path = url.pathname;
 
