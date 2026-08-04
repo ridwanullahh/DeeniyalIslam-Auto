@@ -152,3 +152,8 @@ export function isWhatsAppConnected(): boolean {
 export function getWhatsAppStatus() {
   return lastConnectionState;
 }
+
+/** Expose the raw socket for advanced operations (e.g. WhatsApp Status posting) */
+export function getWhatsAppSocket(): WASocket | null {
+  return sock;
+}

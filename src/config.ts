@@ -117,6 +117,38 @@ export const CONFIG = {
     pollIntervalSec: int("SCHEDULER_POLL_INTERVAL_SEC", 30),
   },
 
+  cloudinary: {
+    enabled: bool("CLOUDINARY_ENABLED", false),
+    cloudName: opt("CLOUDINARY_CLOUD_NAME", ""),
+    apiKey: opt("CLOUDINARY_API_KEY", ""),
+    apiSecret: opt("CLOUDINARY_API_SECRET", ""),
+    /** Default folder prefix for Mushaf page uploads */
+    mushafFolder: opt("CLOUDINARY_MUSHAF_FOLDER", "deeniyalislam/mushaf"),
+  },
+
+  salah: {
+    /** Aladhan API base — free, no key required */
+    apiBase: opt("SOLAH_API_BASE", "https://api.aladhan.com/v1"),
+    /** Calculation method (3 = Muslim World League). See Aladhan docs. */
+    method: int("SOLAH_METHOD", 3),
+    /** School (0 = Shafi, 1 = Hanafi for Asr calculation) */
+    school: int("SOLAH_SCHOOL", 0),
+  },
+
+  /** ToS-compliance guardrails. Hard limits to prevent platform bans. */
+  guardrails: {
+    /** Max outbound messages per subscriber per hour (WhatsApp best practice) */
+    maxPerSubscriberPerHour: int("GUARD_MAX_PER_SUB_HOUR", 12),
+    /** Max outbound messages per subscriber per day */
+    maxPerSubscriberPerDay: int("GUARD_MAX_PER_SUB_DAY", 60),
+    /** Min delay between consecutive sends to the same subscriber (seconds) */
+    minDelayBetweenSendsSec: int("GUARD_MIN_DELAY_SEC", 60),
+    /** Max messages per minute to a single channel globally */
+    maxChannelPerMinute: int("GUARD_MAX_CHANNEL_PER_MIN", 30),
+    /** Honor 'stop' / 'unsubscribe' immediately and never message again */
+    honorOptOut: true,
+  },
+
   logLevel: opt("LOG_LEVEL", "info"),
 } as const;
 

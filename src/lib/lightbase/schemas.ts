@@ -316,6 +316,150 @@ export const feedbackSchema: CollectionSchema = {
 };
 
 // ---------------------------------------------------------------------------
+// Content schedules — robust per-content-type, per-channel scheduling config
+// Used by the admin to define default schedules that subscribers can opt into,
+// AND by the autoposter for global broadcasts. Channel-agnostic.
+// ---------------------------------------------------------------------------
+
+export const contentSchedulesSchema: CollectionSchema = {
+  name: "content_schedules",
+  description: "Reusable schedule templates per content type + channel. Channel-agnostic — used by both per-subscriber delivery and global autopost.",
+  fields: [
+    { name: "name", type: "string", required: true, maxLength: 120, description: "Human-readable name (e.g. 'Morning Adhkar — Fajr+15min')" },
+    { name: "contentType", type: "string", required: true, indexed: true, enum: ["quran_verse", "quran_page", "hadith", "adhkar_morning", "adhkar_evening", "adhkar_sleep", "adhkar_after_prayer", "general_reminder", "khatma_page", "salah_reminder"] },
+    { name: "scheduleType", type: "string", required: true, enum: ["cron", "salah_relative", "interval_minutes"], default: "cron", description: "cron=UTC cron, salah_relative=offset from a salah, interval_minutes=every N minutes" },
+    { name: "scheduleCron", type: "string", description: "UTC cron expression (when scheduleType=cron)" },
+    { name: "salahKey", type: "string", enum: ["fajr", "dhuhr", "asr", "maghrib", "isha"], description: "Salah to anchor to (when scheduleType=salah_relative)" },
+    { name: "salahOffsetMinutes", type: "integer", minimum: -180, maximum: 180, default: 0, description: "Minutes offset from salah time (negative=before, positive=after)" },
+    { name: "intervalMinutes", type: "integer", minimum: 1, maximum: 1440, description: "Repeat every N minutes (when scheduleType=interval_minutes)" },
+    { name: "channels", type: "array", of: "string", description: "Target channels: ['whatsapp','telegram','discord','messenger','site_home','site_widget','whatsapp_status']" },
+    { name: "isDefault", type: "boolean", default: false, indexed: true, description: "Default template for this content type" },
+    { name: "isActive", type: "boolean", default: true, indexed: true },
+    { name: "createdBy", type: "string" },
+    { name: "createdAt", type: "datetime", required: true },
+    { name: "updatedAt", type: "datetime" },
+  ],
+  indexes: [
+    { name: "content_schedules_type_active_idx", fields: ["contentType", "isActive"] },
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// Khatma subscriptions — Qur'an reading plan per subscriber.
+// A subscriber can have one active khatma at a time (enforced at app layer).
+// ---------------------------------------------------------------------------
+
+export const khatmaSubscriptionsSchema: CollectionSchema = {
+  name: "khatma_subscriptions",
+  description: "Per-subscriber Qur'an Khatma (complete reading) plan. Tracks progress, pace, and delivery schedule.",
+  fields: [
+    { name: "subscriberId", type: "string", required: true, indexed: true, refCollection: "subscribers" },
+    { name: "name", type: "string", maxLength: 120, description: "Optional name (e.g. 'Ramadan Khatma')" },
+    // Plan config
+    { name: "pace", type: "string", required: true, enum: ["pages_per_day", "pages_per_salah", "pages_per_week", "juz_per_week", "complete_in_days"], default: "pages_per_day" },
+    { name: "pagesPerStep", type: "integer", minimum: 1, maximum: 604, default: 1, description: "Pages to deliver each step" },
+    { name: "targetDays", type: "integer", minimum: 1, maximum: 365, description: "Complete in N days (used when pace=complete_in_days)" },
+    // Schedule config
+    { name: "scheduleType", type: "string", required: true, enum: ["cron", "salah_relative", "interval_minutes"], default: "salah_relative" },
+    { name: "scheduleCron", type: "string", description: "UTC cron (when scheduleType=cron)" },
+    { name: "salahKey", type: "string", enum: ["fajr", "dhuhr", "asr", "maghrib", "isha"], description: "Salah to anchor to (when scheduleType=salah_relative). Empty = after every salah" },
+    { name: "salahOffsetMinutes", type: "integer", minimum: -180, maximum: 180, default: 5 },
+    { name: "intervalMinutes", type: "integer", minimum: 30, maximum: 1440, default: 360 },
+    { name: "channel", type: "string", required: true, default: "whatsapp", enum: ["whatsapp", "telegram", "discord", "messenger"] },
+    // Progress tracking
+    { name: "startPage", type: "integer", minimum: 1, maximum: 604, default: 1 },
+    { name: "currentPage", type: "integer", minimum: 1, maximum: 604, default: 1, indexed: true, description: "Next page to deliver" },
+    { name: "endPage", type: "integer", minimum: 1, maximum: 604, default: 604 },
+    { name: "deliveredCount", type: "integer", default: 0, description: "Total pages delivered so far" },
+    { name: "startedAt", type: "datetime", required: true },
+    { name: "targetEndAt", type: "datetime", description: "Computed target completion date" },
+    { name: "completedAt", type: "datetime" },
+    { name: "lastDeliveredAt", type: "datetime" },
+    { name: "nextSendAt", type: "datetime", indexed: true },
+    { name: "status", type: "string", required: true, default: "active", indexed: true, enum: ["active", "paused", "completed", "abandoned"] },
+    { name: "createdAt", type: "datetime", required: true },
+    { name: "updatedAt", type: "datetime" },
+  ],
+  indexes: [
+    { name: "khatma_subscriber_active_idx", fields: ["subscriberId", "status"] },
+    { name: "khatma_status_next_idx", fields: ["status", "nextSendAt"] },
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// Salah schedules — cached salah times per subscriber per day.
+// Refreshed daily by the scheduler from the Aladhan API.
+// ---------------------------------------------------------------------------
+
+export const salahSchedulesSchema: CollectionSchema = {
+  name: "salah_schedules",
+  description: "Daily salah times per subscriber. Refreshed from Aladhan API once per day per subscriber.",
+  fields: [
+    { name: "subscriberId", type: "string", required: true, indexed: true, refCollection: "subscribers" },
+    { name: "date", type: "date", required: true, indexed: true, description: "Local date YYYY-MM-DD" },
+    { name: "timezone", type: "string", required: true },
+    // Aladhan returns lat/lng + method-based times
+    { name: "latitude", type: "number" },
+    { name: "longitude", type: "number" },
+    { name: "method", type: "integer", description: "Aladhan calculation method (e.g. 3 = Muslim World League)" },
+    { name: "fajr", type: "datetime", description: "UTC datetime of Fajr adhan" },
+    { name: "sunrise", type: "datetime" },
+    { name: "dhuhr", type: "datetime" },
+    { name: "asr", type: "datetime" },
+    { name: "maghrib", type: "datetime" },
+    { name: "isha", type: "datetime" },
+    { name: "fetchedAt", type: "datetime", required: true },
+  ],
+  indexes: [
+    { name: "salah_schedules_sub_date_unique", fields: ["subscriberId", "date"], unique: true },
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// Bot conversation state — for interactive multi-step bot flows
+// (e.g. setting up a khatma via WhatsApp step-by-step)
+// ---------------------------------------------------------------------------
+
+export const botConversationsSchema: CollectionSchema = {
+  name: "bot_conversations",
+  description: "Per-user bot conversation state. Used for multi-step flows (subscribe, khatma setup, etc.).",
+  fields: [
+    { name: "channel", type: "string", required: true, indexed: true, enum: ["whatsapp", "telegram", "discord", "messenger"] },
+    { name: "handle", type: "string", required: true, indexed: true },
+    { name: "flow", type: "string", required: true, indexed: true, description: "e.g. 'subscribe', 'khatma_setup', 'manage_subs'" },
+    { name: "step", type: "string", required: true, default: "start" },
+    { name: "data", type: "json", description: "Flow-specific data accumulated across steps" },
+    { name: "startedAt", type: "datetime", required: true },
+    { name: "updatedAt", type: "datetime" },
+    { name: "expiresAt", type: "datetime", required: true, indexed: true },
+  ],
+  indexes: [
+    { name: "bot_conv_channel_handle_idx", fields: ["channel", "handle"] },
+    { name: "bot_conv_expires_idx", fields: ["expiresAt"] },
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// Autopost log — track each global autopost execution
+// ---------------------------------------------------------------------------
+
+export const autopostLogSchema: CollectionSchema = {
+  name: "autopost_log",
+  description: "Tracks each global autopost execution per channel + the external post id.",
+  fields: [
+    { name: "postId", type: "string", required: true, indexed: true, refCollection: "posts" },
+    { name: "channel", type: "string", required: true, indexed: true },
+    { name: "status", type: "string", required: true, indexed: true, enum: ["sent", "failed", "skipped"] },
+    { name: "externalId", type: "string", description: "External post/message id on the channel" },
+    { name: "attemptedAt", type: "datetime", required: true },
+    { name: "error", type: "text" },
+  ],
+  indexes: [
+    { name: "autopost_log_post_idx", fields: ["postId"] },
+  ],
+};
+
+// ---------------------------------------------------------------------------
 // Schedule — registry of all schemas for the bootstrapper
 // ---------------------------------------------------------------------------
 
@@ -332,6 +476,11 @@ export const ALL_SCHEMAS: CollectionSchema[] = [
   adminAuditSchema,
   botSessionsSchema,
   feedbackSchema,
+  contentSchedulesSchema,
+  khatmaSubscriptionsSchema,
+  salahSchedulesSchema,
+  botConversationsSchema,
+  autopostLogSchema,
 ];
 
 export const COLLECTION_NAMES = ALL_SCHEMAS.map((s) => s.name);

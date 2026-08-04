@@ -1,22 +1,32 @@
 /**
  * Scheduler engine.
  *
- * Polls the `subscriptions` collection for due subscriptions (nextSendAt <= now,
- * status = active) and dispatches them to the appropriate channel adapter.
- * Records each delivery in `delivery_log` and updates nextSendAt to the next
- * computed run time.
+ * Two parallel workloads:
+ *   1. Per-subscriber subscriptions (quran verse, hadith, adhkar, reminders, salah reminders)
+ *   2. Per-subscriber khatma page deliveries
+ *   3. Global autopost (broadcast to channels + site)
  *
- * Runs in-process via setInterval. Poll interval is configurable via
- * SCHEDULER_POLL_INTERVAL_SEC (default 30s).
+ * Each tick (every 30s by default):
+ *   - Find due subscriptions (status=active, nextSendAt <= now)
+ *   - For each: fetch content, send via channel adapter (respecting guardrails),
+ *     log delivery, compute nextSendAt using the scheduling library
+ *   - Find due khatmas (status=active, nextSendAt <= now) — handled by khatma engine
+ *   - Find due autoposts (status=scheduled, scheduledFor <= now) — handled by autoposter
+ *
+ * Runs in-process via setInterval. Bismillah Ar-Rahman Ar-Raheem.
  */
 import cronParser from "cron-parser";
 import { CONFIG } from "@/config";
 import { collections } from "@/lib/lightbase/client";
 import { getAdapter } from "@/lib/channels/registry";
 import { logger } from "@/lib/logger";
+import { canSendToSubscriber, canSendOnChannel, recordChannelSend } from "@/lib/guardrails";
+import { computeNextSendAt, type ScheduleSpec } from "@/lib/scheduling";
+import { getSalahTimesForSubscriber } from "@/lib/salah/client";
+import { processDueKhatmas } from "@/lib/khatma/engine";
+import { processDueAutoposts } from "@/lib/autoposter";
 
 const log = logger("scheduler:engine");
-
 const { CronExpressionParser } = cronParser;
 
 const subscriptions = collections("subscriptions");
@@ -27,7 +37,6 @@ const hadiths = collections("hadiths");
 const adhkar = collections("adhkar");
 const reminders = collections("reminders");
 
-let running = false;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 export interface SchedulerStatus {
@@ -36,6 +45,11 @@ export interface SchedulerStatus {
   processed: number;
   sent: number;
   failed: number;
+  skipped: number;
+  khatmaProcessed: number;
+  khatmaSent: number;
+  autopostProcessed: number;
+  autopostSent: number;
 }
 
 const status: SchedulerStatus = {
@@ -44,6 +58,11 @@ const status: SchedulerStatus = {
   processed: 0,
   sent: 0,
   failed: 0,
+  skipped: 0,
+  khatmaProcessed: 0,
+  khatmaSent: 0,
+  autopostProcessed: 0,
+  autopostSent: 0,
 };
 
 export function getSchedulerStatus(): SchedulerStatus {
@@ -61,7 +80,6 @@ export function startScheduler(): void {
   }
   log.info({ pollIntervalSec: CONFIG.scheduler.pollIntervalSec }, "Starting scheduler");
   status.running = true;
-  // Run once immediately, then on interval
   setTimeout(() => runOnce().catch((e) => log.error({ err: e }, "Initial run failed")), 5_000);
   pollTimer = setInterval(() => {
     runOnce().catch((e) => log.error({ err: e }, "Scheduler tick failed"));
@@ -82,58 +100,105 @@ async function runOnce(): Promise<void> {
   status.lastRunAt = now;
   log.debug({ now }, "Scheduler tick");
 
+  // 1. Per-subscriber subscriptions
   try {
-    // Find due subscriptions: status=active, nextSendAt <= now
-    // We filter using a comparison — Lightbase supports gte/lt operators on datetime fields
     const due = await subscriptions.list({
       filter: { and: [
         { field: "status", op: "eq", value: "active" },
         { field: "nextSendAt", op: "lte", value: now },
       ] },
-      limit: 50, // Process up to 50 per tick
+      limit: 50,
       sort: "nextSendAt:asc",
     });
 
-    if (due.data.length === 0) {
-      log.debug("No due subscriptions");
-      return;
+    if (due.data.length > 0) {
+      log.info({ count: due.data.length }, "Processing due subscriptions");
     }
-    log.info({ count: due.data.length }, "Processing due subscriptions");
 
     for (const sub of due.data) {
       status.processed++;
       try {
-        await processSubscription(sub as any);
-        status.sent++;
+        const r = await processSubscription(sub as any);
+        if (r.sent) status.sent++;
+        else if (r.skipped) status.skipped++;
+        else status.failed++;
       } catch (e) {
         status.failed++;
         log.error({ err: e, subscriptionId: sub.id }, "Failed to process subscription");
-        // Update the subscription's nextSendAt so we don't retry immediately
         await updateNextSendAt(sub.id, sub as any).catch(() => {});
       }
     }
   } catch (e) {
-    log.error({ err: e }, "Scheduler tick failed");
+    log.error({ err: e }, "Scheduler tick failed (subscriptions)");
+  }
+
+  // 2. Khatma deliveries
+  try {
+    const k = await processDueKhatmas();
+    status.khatmaProcessed += k.processed;
+    status.khatmaSent += k.sent;
+  } catch (e) {
+    log.error({ err: e }, "Khatma batch failed");
+  }
+
+  // 3. Global autopost
+  try {
+    const a = await processDueAutoposts();
+    status.autopostProcessed += a.processed;
+    status.autopostSent += a.sent;
+  } catch (e) {
+    log.error({ err: e }, "Autopost batch failed");
   }
 }
 
-async function processSubscription(sub: any): Promise<void> {
-  // Fetch the subscriber
+interface ProcessResult {
+  sent: boolean;
+  skipped: boolean;
+  failed: boolean;
+}
+
+async function processSubscription(sub: any): Promise<ProcessResult> {
+  // 1. Fetch the subscriber
   let subscriber;
   try {
     subscriber = await subscribers.get(sub.subscriberId);
   } catch {
     log.warn({ subscriptionId: sub.id, subscriberId: sub.subscriberId }, "Subscriber not found");
     await subscriptions.update(sub.id, { status: "archived" });
-    return;
+    return { sent: false, skipped: true, failed: false };
   }
   if (!subscriber || subscriber.status !== "active") {
     log.info({ subscriptionId: sub.id, subscriberStatus: subscriber?.status }, "Skipping inactive subscriber");
     await subscriptions.update(sub.id, { status: "archived" });
-    return;
+    return { sent: false, skipped: true, failed: false };
   }
 
-  // Fetch content based on contentType
+  // 2. ToS guardrails — per-subscriber rate limits + opt-out honor
+  const guard = await canSendToSubscriber(subscriber.id);
+  if (!guard.allowed) {
+    log.info({ subscriptionId: sub.id, subscriberId: subscriber.id, reason: guard.reason }, "Delivery skipped by guardrail");
+    await deliveryLog.insert({
+      subscriptionId: sub.id,
+      subscriberId: subscriber.id,
+      contentType: sub.contentType,
+      channel: sub.channel,
+      status: "skipped",
+      attemptedAt: new Date().toISOString(),
+      error: `guardrail: ${guard.reason}`,
+    }).catch(() => {});
+    await updateNextSendAt(sub.id, sub);
+    return { sent: false, skipped: true, failed: false };
+  }
+
+  // 3. Channel-level rate limit
+  const channelGuard = canSendOnChannel(sub.channel);
+  if (!channelGuard.allowed) {
+    log.info({ channel: sub.channel, reason: channelGuard.reason }, "Channel rate-limited");
+    // Don't bump nextSendAt — we want to retry on the next tick
+    return { sent: false, skipped: true, failed: false };
+  }
+
+  // 4. Fetch content based on contentType
   const content = await fetchContentForType(sub.contentType);
   if (!content) {
     log.warn({ contentType: sub.contentType }, "No content available for type");
@@ -147,15 +212,16 @@ async function processSubscription(sub: any): Promise<void> {
       error: "No content available",
     });
     await updateNextSendAt(sub.id, sub);
-    return;
+    return { sent: false, skipped: true, failed: false };
   }
 
-  // Send via channel adapter
+  // 5. Send via channel adapter
   const adapter = await getAdapter(sub.channel);
   const message = formatMessage(sub.contentType, content);
   const result = await adapter.send(subscriber.handle, message);
+  recordChannelSend(sub.channel);
 
-  // Log delivery
+  // 6. Log delivery
   await deliveryLog.insert({
     subscriptionId: sub.id,
     subscriberId: subscriber.id,
@@ -166,11 +232,22 @@ async function processSubscription(sub: any): Promise<void> {
     error: result.error,
   });
 
-  // Update lastSentAt + nextSendAt
+  // 7. Update lastSentAt + nextSendAt (using scheduling library)
   const now = new Date().toISOString();
+  const spec = specFromSubscription(sub);
+  let salahTimes = null;
+  if (spec.scheduleType === "salah_relative") {
+    salahTimes = await getSalahTimesForSubscriber(subscriber.id);
+  }
+  const nextSendAt = computeNextSendAt(spec, {
+    timezone: subscriber.timezone ?? "UTC",
+    salahTimes: salahTimes ?? undefined,
+  }) ?? new Date(Date.now() + 3600_000).toISOString();
+
   await subscriptions.update(sub.id, {
     lastSentAt: now,
-    nextSendAt: computeNextSendAt(sub.scheduleCron, subscriber.timezone),
+    nextSendAt,
+    updatedAt: now,
   });
 
   log.info({
@@ -179,7 +256,27 @@ async function processSubscription(sub: any): Promise<void> {
     channel: sub.channel,
     subscriber: subscriber.handle,
     ok: result.ok,
+    nextSendAt,
   }, "Delivery attempted");
+
+  return { sent: result.ok, skipped: false, failed: !result.ok };
+}
+
+function specFromSubscription(sub: any): ScheduleSpec {
+  // Existing subscriptions only have scheduleCron; we preserve backward compat
+  // by detecting salah-related contentTypes and auto-anchoring to the right salah.
+  if (sub.scheduleType === "salah_relative") {
+    return {
+      scheduleType: "salah_relative",
+      salahKey: sub.salahKey,
+      salahOffsetMinutes: sub.salahOffsetMinutes ?? 0,
+    };
+  }
+  if (sub.scheduleType === "interval_minutes") {
+    return { scheduleType: "interval_minutes", intervalMinutes: sub.intervalMinutes ?? 360 };
+  }
+  // Default: cron (backward compat)
+  return { scheduleType: "cron", scheduleCron: sub.scheduleCron };
 }
 
 async function fetchContentForType(contentType: string): Promise<any> {
@@ -269,24 +366,18 @@ function formatMessage(contentType: string, content: any): string {
   }
 }
 
-function computeNextSendAt(cronExpr: string, timezone: string): string {
-  try {
-    const interval = CronExpressionParser.parse(cronExpr, { tz: timezone });
-    const next = interval.next();
-    return next.toISOString();
-  } catch (e) {
-    // Fallback: 24 hours from now
-    return new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-  }
-}
-
 async function updateNextSendAt(subscriptionId: string, sub: any): Promise<void> {
   try {
     const subscriber = await subscribers.get(sub.subscriberId);
     const tz = subscriber?.timezone ?? "UTC";
-    await subscriptions.update(subscriptionId, {
-      nextSendAt: computeNextSendAt(sub.scheduleCron, tz),
-    });
+    const spec = specFromSubscription(sub);
+    let salahTimes = null;
+    if (spec.scheduleType === "salah_relative") {
+      salahTimes = await getSalahTimesForSubscriber(subscriber.id);
+    }
+    const next = computeNextSendAt(spec, { timezone: tz, salahTimes: salahTimes ?? undefined })
+      ?? new Date(Date.now() + 3600_000).toISOString();
+    await subscriptions.update(subscriptionId, { nextSendAt: next });
   } catch (e) {
     log.error({ err: e, subscriptionId }, "Failed to update nextSendAt");
   }
