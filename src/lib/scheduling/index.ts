@@ -115,7 +115,9 @@ function computeNextSpecificSalah(
   if (target > now) {
     return target.toISOString();
   }
-  return new Date(t.getTime() + 24 * 3600_000).toISOString();
+  // Today's slot has passed — schedule for tomorrow (today's salah + 24h + offset).
+  // The daily salah refresh will replace this with the exact time before delivery.
+  return new Date(t.getTime() + 24 * 3600_000 + offsetMin * 60_000).toISOString();
 }
 
 export function validateScheduleSpec(spec: ScheduleSpec): string | null {

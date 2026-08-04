@@ -1,7 +1,8 @@
 /**
  * Idempotent collection bootstrapper.
- * Creates any missing collections in the configured Lightbase project.
- * Safe to run multiple times — existing collections are skipped (409).
+ * Creates any missing collections in the configured Lightbase project, AND
+ * migrates existing schemas to add new fields (via PUT /collections/:name).
+ * Safe to run multiple times.
  */
 import {
   createCollection,
@@ -10,7 +11,7 @@ import {
   lb,
   LightbaseError,
 } from "./client";
-import { ALL_SCHEMAS, COLLECTION_NAMES } from "./schemas";
+import { ALL_SCHEMAS, COLLECTION_NAMES, type CollectionSchema } from "./schemas";
 import { CONFIG } from "@/config";
 import { logger } from "@/lib/logger";
 
@@ -19,9 +20,33 @@ const log = logger("lightbase:bootstrap");
 export interface BootstrapResult {
   created: string[];
   skipped: string[];
+  migrated: string[];
   errors: Array<{ collection: string; error: string }>;
   bucket: { name: string; ok: boolean; error?: string };
   healthy: boolean;
+}
+
+/**
+ * Update an existing collection's schema (adds new fields; preserves data).
+ * Uses PUT /api/v1/projects/:id/collections/:name (requires admin scope).
+ */
+async function migrateCollectionSchema(schema: CollectionSchema): Promise<{ migrated: boolean; error?: string }> {
+  const url = `/api/v1/projects/${CONFIG.lightbase.projectId}/collections/${schema.name}`;
+  try {
+    await lb.put(url, {
+      name: schema.name,
+      fields: schema.fields,
+      indexes: schema.indexes ?? [],
+    });
+    return { migrated: true };
+  } catch (e) {
+    if (e instanceof LightbaseError && e.status === 400 && e.message.includes("already exists")) {
+      // Index already exists — fine
+      return { migrated: false };
+    }
+    const msg = e instanceof LightbaseError ? `${e.code}: ${e.message}` : String(e);
+    return { migrated: false, error: msg };
+  }
 }
 
 export async function bootstrap(): Promise<BootstrapResult> {
@@ -34,9 +59,7 @@ export async function bootstrap(): Promise<BootstrapResult> {
   });
   if (!health || health.status !== "ok") {
     return {
-      created: [],
-      skipped: [],
-      errors: [],
+      created: [], skipped: [], migrated: [], errors: [],
       bucket: { name: CONFIG.lightbase.bucket, ok: false, error: "Lightbase unhealthy" },
       healthy: false,
     };
@@ -48,28 +71,37 @@ export async function bootstrap(): Promise<BootstrapResult> {
   const existingNames = new Set(existing.map((c) => c.name));
   log.info({ existing: Array.from(existingNames) }, "Existing collections");
 
-  // 3. Create missing collections
+  // 3. Create missing collections + migrate existing schemas
   const created: string[] = [];
   const skipped: string[] = [];
+  const migrated: string[] = [];
   const errors: Array<{ collection: string; error: string }> = [];
 
   for (const schema of ALL_SCHEMAS) {
-    if (existingNames.has(schema.name)) {
+    if (!existingNames.has(schema.name)) {
+      try {
+        await createCollection(schema.name, schema.fields, schema.indexes);
+        created.push(schema.name);
+        log.info({ collection: schema.name }, "Collection created");
+      } catch (e) {
+        const msg = e instanceof LightbaseError ? `${e.code}: ${e.message}` : String(e);
+        if (e instanceof LightbaseError && e.status === 409) {
+          skipped.push(schema.name);
+        } else {
+          errors.push({ collection: schema.name, error: msg });
+          log.error({ collection: schema.name, err: e }, "Failed to create collection");
+        }
+      }
+    } else {
       skipped.push(schema.name);
-      continue;
-    }
-    try {
-      await createCollection(schema.name, schema.fields, schema.indexes);
-      created.push(schema.name);
-      log.info({ collection: schema.name }, "Collection created");
-    } catch (e) {
-      const msg = e instanceof LightbaseError ? `${e.code}: ${e.message}` : String(e);
-      // 409 means it already exists; treat as skipped
-      if (e instanceof LightbaseError && e.status === 409) {
-        skipped.push(schema.name);
-      } else {
-        errors.push({ collection: schema.name, error: msg });
-        log.error({ collection: schema.name, err: e }, "Failed to create collection");
+      // Try to migrate schema (add new fields). Errors here are non-fatal —
+      // the existing schema will still work for old fields.
+      const r = await migrateCollectionSchema(schema);
+      if (r.migrated) {
+        migrated.push(schema.name);
+        log.info({ collection: schema.name }, "Schema migrated");
+      } else if (r.error) {
+        log.debug({ collection: schema.name, error: r.error }, "Schema migration skipped");
       }
     }
   }
@@ -89,6 +121,7 @@ export async function bootstrap(): Promise<BootstrapResult> {
   return {
     created,
     skipped,
+    migrated,
     errors,
     bucket: { name: CONFIG.lightbase.bucket, ok: bucketOk, error: bucketError },
     healthy: errors.length === 0 && bucketOk,

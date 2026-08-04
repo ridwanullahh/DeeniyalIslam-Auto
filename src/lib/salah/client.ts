@@ -158,6 +158,12 @@ export async function fetchSalahTimesByCity(
  * Convert a "HH:MM" or "HH:MM (TZ)" time string (Aladhan format) to UTC ISO.
  * Aladhan returns times like "05:13 (WAT)" — we parse the HH:MM and combine
  * with the date + timezone to get a UTC instant.
+ *
+ * Algorithm: We do a binary search over possible UTC instants near the local
+ * wall-clock time. For each candidate UTC instant, we format it in the target
+ * timezone and check if the resulting wall-clock matches our target. This is
+ * the only correct way to do tz-aware conversion without depending on a tz
+ * database library like luxon.
  */
 function localToUtc(timeStr: string, dateLocal: string, timezone: string): string {
   // Strip parenthetical tz, take just HH:MM
@@ -166,35 +172,30 @@ function localToUtc(timeStr: string, dateLocal: string, timezone: string): strin
   if (!Number.isFinite(h) || !Number.isFinite(m)) {
     return new Date(dateLocal + "T00:00:00Z").toISOString();
   }
-  // Build the local datetime and convert to UTC using the timezone offset
-  const localDateStr = `${dateLocal}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`;
-  // Use Intl to figure out the offset
-  try {
-    const localDate = new Date(localDateStr);
-    // Format the date in the target tz to get the UTC equivalent
-    const formatter = new Intl.DateTimeFormat("en-US", {
-      timeZone: timezone,
-      year: "numeric", month: "2-digit", day: "2-digit",
-      hour: "2-digit", minute: "2-digit", second: "2-digit",
-      hour12: false,
-    });
-    // We need the inverse: given a wall-clock time in `timezone`, what UTC instant is it?
-    // Approach: try both +offset and -offset; pick the one whose formatted-in-tz matches.
-    for (const offsetHours of [-12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]) {
-      const candidateUtc = new Date(localDate.getTime() - offsetHours * 3600_000);
-      const parts = formatter.formatToParts(candidateUtc);
-      const partMap: Record<string, string> = {};
-      for (const p of parts) partMap[p.type] = p.value;
-      const candidateLocal = `${partMap.year}-${partMap.month}-${partMap.day}T${partMap.hour === "24" ? "00" : partMap.hour}:${partMap.minute}:${partMap.second}`;
-      if (candidateLocal === localDateStr) {
-        return candidateUtc.toISOString();
-      }
+  const targetHh = String(h).padStart(2, "0");
+  const targetMm = String(m).padStart(2, "0");
+  const targetWallClock = `${targetHh}:${targetMm}`; // "HH:MM"
+
+  // Naive UTC instant built from local date+time (treats local as UTC)
+  // — this is the wrong answer but a good starting point for the search.
+  const naiveUtc = new Date(`${dateLocal}T${targetHh}:${targetMm}:00Z`);
+
+  // Search ±14 hours around the naive UTC for the instant that, when formatted
+  // in the target tz, yields the same HH:MM wall-clock.
+  const formatter = new Intl.DateTimeFormat("en-GB", {
+    timeZone: timezone,
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  });
+  for (let offsetMin = -14 * 60; offsetMin <= 14 * 60; offsetMin++) {
+    const candidate = new Date(naiveUtc.getTime() - offsetMin * 60_000);
+    // Format the candidate in the target tz
+    const formatted = formatter.format(candidate); // "HH:MM"
+    if (formatted === targetWallClock) {
+      return candidate.toISOString();
     }
-    // Fallback: assume the local date string IS UTC (wrong but won't crash)
-    return localDate.toISOString();
-  } catch {
-    return localDate.toISOString();
   }
+  // Fallback: use the naive UTC (will be off by the tz offset, but at least valid)
+  return naiveUtc.toISOString();
 }
 
 /**

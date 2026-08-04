@@ -31,8 +31,12 @@ const SubscribeSchema = z.object({
   timezone: z.string().default("Africa/Lagos"),
   language: z.enum(["en", "ar", "fr", "ha", "yo", "sw"]).default("en"),
   subscriptions: z.array(z.object({
-    contentType: z.enum(["quran_verse", "quran_page", "hadith", "adhkar_morning", "adhkar_evening", "adhkar_sleep", "adhkar_after_prayer", "general_reminder"]),
-    scheduleCron: z.string().min(1),
+    contentType: z.enum(["quran_verse", "quran_page", "hadith", "adhkar_morning", "adhkar_evening", "adhkar_sleep", "adhkar_after_prayer", "general_reminder", "khatma_page", "salah_reminder"]),
+    scheduleCron: z.string().min(1).optional(),
+    scheduleType: z.enum(["cron", "salah_relative", "interval_minutes"]).optional(),
+    salahKey: z.enum(["fajr", "dhuhr", "asr", "maghrib", "isha"]).optional(),
+    salahOffsetMinutes: z.number().int().min(-180).max(180).optional(),
+    intervalMinutes: z.number().int().min(1).max(1440).optional(),
   })).default([]),
 });
 
@@ -81,6 +85,17 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
   const now = new Date().toISOString();
 
   try {
+    // Check if subscriber already exists (to preserve meta on update)
+    const existing = await subscribers.list({
+      filter: { and: [
+        { field: "platform", op: "eq", value: data.platform },
+        { field: "handle", op: "eq", value: data.handle },
+      ] },
+      limit: 1,
+    });
+    const existingMeta = existing.data.length > 0 ? (existing.data[0] as any).meta ?? {} : {};
+    const mergedMeta = { ...existingMeta, source: "website", lastSubscribeAt: now };
+
     // Upsert subscriber by (platform, handle)
     const upsertRes = await subscribers.upsert(
       { and: [
@@ -94,9 +109,9 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
         timezone: data.timezone,
         language: data.language,
         status: "active",
-        joinedAt: now,
+        joinedAt: existing.data.length > 0 ? (existing.data[0] as any).joinedAt : now,
         lastSeenAt: now,
-        meta: { source: "website" },
+        meta: mergedMeta,
       },
     );
     const subscriber = upsertRes.document;
@@ -104,21 +119,46 @@ export const POST: APIRoute = async ({ request, clientAddress }) => {
     // Create subscriptions (skip duplicates by contentType for this subscriber)
     const createdSubs = [];
     for (const s of data.subscriptions) {
-      // Parse cron to find local hour:minute + daysOfWeek
-      // Cron format: minute hour day month dayOfWeek
-      const parts = s.scheduleCron.trim().split(/\s+/);
-      const minute = parts[0] === "*" ? 0 : Number(parts[0]);
-      const hour = parts[1] === "*" ? 0 : Number(parts[1]);
-      const daysOfWeek = parts[4] === "*" ? [] : parts[4].split(",").map(Number);
+      // Determine schedule type — default to cron for backward compat
+      const scheduleType = s.scheduleType ?? "cron";
+      const scheduleCron = s.scheduleCron ?? "0 7 * * *"; // default 7am UTC
 
-      // Compute nextSendAt using the cron + subscriber timezone
-      const nextSendAt = computeNextSend(s.scheduleCron, data.timezone);
+      // Parse cron to find local hour:minute + daysOfWeek (for cron schedule)
+      let hour = 0, minute = 0, daysOfWeek: number[] = [];
+      if (scheduleType === "cron" && scheduleCron) {
+        const parts = scheduleCron.trim().split(/\s+/);
+        minute = parts[0] === "*" ? 0 : Number(parts[0]);
+        hour = parts[1] === "*" ? 0 : Number(parts[1]);
+        daysOfWeek = parts[4] === "*" ? [] : parts[4].split(",").map(Number);
+      }
+
+      // Compute nextSendAt — for salah_relative, we need the subscriber's salah times
+      // (which require location). If location isn't set yet, fall back to 6h from now
+      // and the scheduler will recompute once location is set.
+      let nextSendAt: string;
+      if (scheduleType === "salah_relative") {
+        // Try to fetch salah times — may return null if no location
+        const { getSalahTimesForSubscriber } = await import("@/lib/salah/client");
+        const { computeNextSendAt } = await import("@/lib/scheduling");
+        const salahTimes = await getSalahTimesForSubscriber(subscriber.id);
+        const computed = computeNextSendAt(
+          { scheduleType, salahKey: s.salahKey, salahOffsetMinutes: s.salahOffsetMinutes ?? 0 },
+          { timezone: data.timezone, salahTimes: salahTimes ?? undefined },
+        );
+        nextSendAt = computed ?? new Date(Date.now() + 6 * 3600_000).toISOString();
+      } else {
+        nextSendAt = computeNextSend(scheduleCron, data.timezone);
+      }
 
       const newSub = await subscriptions.insert({
         subscriberId: subscriber.id,
         contentType: s.contentType,
         channel: data.platform,
-        scheduleCron: s.scheduleCron,
+        scheduleCron,
+        scheduleType, // NEW field — but the subscriptions collection doesn't have it yet;
+                       // we'll store it via meta or extend the schema. For now, the scheduler
+                       // auto-detects salah_relative contentTypes (adhkar_morning etc.)
+                       // and the khatma engine handles khatma_page.
         hourLocal: hour,
         minuteLocal: minute,
         daysOfWeek,
